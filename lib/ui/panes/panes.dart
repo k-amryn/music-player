@@ -1,0 +1,5 @@
+// Panes barrel file
+export 'base_pane.dart';
+export 'now_playing_pane.dart';
+export 'library_pane.dart';
+export 'queue_pane.dart';
