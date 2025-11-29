@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../core/models/pane.dart';
 import '../../core/providers/pane_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../core/providers/settings_provider.dart';
+import '../../core/models/app_settings.dart';
 
 /// Tab bar for a pane with drag-and-drop support
 /// Tabs float above the pane content area
@@ -12,6 +14,7 @@ class PaneTabBar extends StatefulWidget {
   final int activeIndex;
   final bool editMode;
   final bool showDragBar;
+  final bool isMobile;
   final Color paneBackgroundColor;
   final double borderSpacing;
   final ValueChanged<int> onTabSelected;
@@ -29,6 +32,7 @@ class PaneTabBar extends StatefulWidget {
     required this.paneBackgroundColor,
     required this.borderSpacing,
     this.showDragBar = false,
+    this.isMobile = false,
     this.onTabClose,
     this.onTabDroppedToPane,
     this.onContextMenu,
@@ -45,7 +49,13 @@ class _PaneTabBarState extends State<PaneTabBar> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final settings = context.watch<SettingsProvider>();
     final hasMultipleTabs = widget.tabs.length > 1;
+    
+    // Use the isMobile flag passed from parent (detected by Platform)
+    final isMobile = widget.isMobile;
+    final tabPosition = isMobile ? PaneTabPosition.bottom : settings.tabPosition;
+    final tabAlignment = isMobile ? PaneTabAlignment.center : settings.tabAlignment;
 
     // If not in edit mode and only one tab, hide the tab bar
     if (!widget.editMode && !hasMultipleTabs) {
@@ -57,7 +67,10 @@ class _PaneTabBarState extends State<PaneTabBar> {
       return Container(
         height: AppDimensions.paneTabHeight,
         alignment: Alignment.center,
-        margin: EdgeInsets.only(bottom: widget.borderSpacing),
+        margin: EdgeInsets.only(
+          bottom: tabPosition == PaneTabPosition.top ? widget.borderSpacing : 0,
+          top: tabPosition == PaneTabPosition.bottom ? widget.borderSpacing : 0,
+        ),
         child: _buildDragBar(theme),
       );
     }
@@ -73,30 +86,50 @@ class _PaneTabBarState extends State<PaneTabBar> {
           index: index,
           isActive: isActive,
           theme: theme,
+          isMobile: isMobile,
         ),
       );
     }
 
     Widget content = Container(
-      height: AppDimensions.paneTabHeight,
+      height: isMobile ? 64 : AppDimensions.paneTabHeight,
       // Transparent background - tabs float over it
       color: Colors.transparent,
-      margin: EdgeInsets.only(bottom: widget.borderSpacing),
+      margin: EdgeInsets.only(
+        bottom: tabPosition == PaneTabPosition.top ? widget.borderSpacing : 0,
+        top: tabPosition == PaneTabPosition.bottom ? widget.borderSpacing : 0,
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.end,
+        mainAxisAlignment: tabAlignment == PaneTabAlignment.center 
+            ? MainAxisAlignment.center 
+            : MainAxisAlignment.start,
         children: [
-          // Tabs - use SingleChildScrollView + Row instead of ListView.builder
-          // to avoid DragTarget mounting issues with virtualized lists
-          Expanded(
-            child: SingleChildScrollView(
+          // Drag bar when in edit mode and single tab (shouldn't happen here due to check above)
+          if (widget.editMode && widget.showDragBar && !hasMultipleTabs)
+            _buildDragBar(theme),
+
+          // Tabs
+          if (tabAlignment == PaneTabAlignment.center)
+            SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.end,
                 children: tabWidgets,
               ),
+            )
+          else
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.end,
+                  children: tabWidgets,
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -163,6 +196,7 @@ class _PaneTabBarState extends State<PaneTabBar> {
     required int index,
     required bool isActive,
     required ThemeData theme,
+    required bool isMobile,
   }) {
     final isDragging = _dragIndex == index;
     final isDark = theme.brightness == Brightness.dark;
@@ -184,51 +218,80 @@ class _PaneTabBarState extends State<PaneTabBar> {
         left: index == 0 ? 0 : 4,
         right: 4,
       ),
-      decoration: BoxDecoration(
-        color: isActive ? activeColor : inactiveColor,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-      ),
+      decoration: isMobile 
+          ? null // No background for mobile tabs
+          : BoxDecoration(
+              color: isActive ? activeColor : inactiveColor,
+              borderRadius: widget.borderSpacing == 0
+                  ? const BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusMd))
+                  : BorderRadius.circular(AppDimensions.radiusMd),
+            ),
       child: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  _getIconForPaneType(tab.type),
-                  size: 16,
-                  color: isActive
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  tab.title,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: isActive
-                        ? theme.colorScheme.onSurface
-                        : theme.colorScheme.onSurfaceVariant,
-                    fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
-                  ),
-                ),
-                if (widget.editMode && widget.tabs.length > 1) ...[
-                  const SizedBox(width: 4),
-                  InkWell(
-                    onTap: () => widget.onTabClose?.call(tab.id),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: const EdgeInsets.all(2),
-                      child: Icon(
-                        Icons.close,
-                        size: 14,
-                        color: theme.colorScheme.onSurfaceVariant,
+            padding: isMobile 
+                ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
+                : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: isMobile
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getIconForPaneType(tab.type),
+                        size: 24,
+                        color: isActive
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
                       ),
-                    ),
+                      const SizedBox(height: 4),
+                      Text(
+                        tab.title,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: isActive
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurfaceVariant,
+                          fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getIconForPaneType(tab.type),
+                        size: 16,
+                        color: isActive
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        tab.title,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isActive
+                              ? theme.colorScheme.onSurface
+                              : theme.colorScheme.onSurfaceVariant,
+                          fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
+                        ),
+                      ),
+                      if (widget.editMode && widget.tabs.length > 1) ...[
+                        const SizedBox(width: 4),
+                        InkWell(
+                          onTap: () => widget.onTabClose?.call(tab.id),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Padding(
+                            padding: const EdgeInsets.all(2),
+                            child: Icon(
+                              Icons.close,
+                              size: 14,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-              ],
-            ),
           ),
           if (showLeftLine)
             Positioned(

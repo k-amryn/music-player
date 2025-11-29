@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'core/services/storage_service.dart';
+import 'core/services/library_database_service.dart';
 import 'app.dart';
 
 void main() async {
@@ -18,6 +19,9 @@ void main() async {
   // Initialize storage service
   final storageService = StorageService();
   await storageService.init();
+
+  // Initialize Isar database
+  await LibraryDatabaseService.instance.initialize();
 
   // Initialize window manager for desktop
   if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {

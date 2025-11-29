@@ -24,3 +24,29 @@ plugins {
 }
 
 include(":app")
+
+// Fix for old plugins that don't define the namespace attribute (AGP 8+ requirement)
+// This sets a fallback namespace for any library module that doesn't have one
+gradle.beforeProject {
+    if (this !== rootProject) {
+        project.afterEvaluate {
+            if (project.hasProperty("android")) {
+                val androidExtension = project.extensions.findByName("android")
+                if (androidExtension != null && androidExtension is com.android.build.gradle.LibraryExtension) {
+                    @Suppress("UnstableApiUsage")
+                    if (androidExtension.namespace.isNullOrEmpty()) {
+                        // Extract package from AndroidManifest.xml
+                        val manifestFile = project.file("src/main/AndroidManifest.xml")
+                        if (manifestFile.exists()) {
+                            val manifest = groovy.xml.XmlSlurper().parse(manifestFile)
+                            val packageName = manifest.getProperty("@package")?.toString()
+                            if (!packageName.isNullOrEmpty()) {
+                                androidExtension.namespace = packageName
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

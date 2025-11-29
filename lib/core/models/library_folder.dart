@@ -77,13 +77,35 @@ class LibraryItem {
   final String name;
   final bool isDirectory;
   final DateTime? modifiedDate;
+  final dynamic coverArt; // String (path) or Uint8List (bytes)
+  final int? durationMs; // Track duration in milliseconds
+  final String? artist;
+  final String? album;
 
   const LibraryItem({
     required this.path,
     required this.name,
     required this.isDirectory,
     this.modifiedDate,
+    this.coverArt,
+    this.durationMs,
+    this.artist,
+    this.album,
   });
+
+  /// Format duration as MM:SS or HH:MM:SS
+  String get formattedDuration {
+    if (durationMs == null) return '';
+    final duration = Duration(milliseconds: durationMs!);
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString()}:${seconds.toString().padLeft(2, '0')}';
+  }
 
   @override
   bool operator ==(Object other) {

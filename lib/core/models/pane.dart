@@ -330,7 +330,7 @@ class PaneLayout {
             pane: Pane.create(
               tabs: [
                 PaneTab.create(
-                  title: 'Now Playing',
+                  title: 'Playing',
                   type: PaneType.nowPlaying,
                 ),
               ],
@@ -350,6 +350,32 @@ class PaneLayout {
         ),
         ratio: 0.3,
       ),
+    );
+  }
+
+  /// Mobile layout - all panes as tabs in a single pane
+  factory PaneLayout.mobileLayout() {
+    return PaneLayout(
+      root: PaneLeaf(
+        pane: Pane.create(
+          tabs: [
+            PaneTab.create(
+              title: 'Library',
+              type: PaneType.library,
+            ),
+            PaneTab.create(
+              title: 'Playing',
+              type: PaneType.nowPlaying,
+            ),
+            PaneTab.create(
+              title: 'Queue',
+              type: PaneType.queue,
+            ),
+          ],
+          activeTabIndex: 0,
+        ),
+      ),
+      editMode: false, // Edit mode is always disabled on mobile
     );
   }
 

@@ -3,7 +3,9 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  isar_flutter_libs
   media_kit_libs_windows_audio
+  permission_handler_windows
   screen_retriever_windows
   window_manager
 )

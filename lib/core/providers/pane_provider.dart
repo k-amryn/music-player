@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/pane.dart';
 import '../services/storage_service.dart';
@@ -6,9 +7,49 @@ import '../services/storage_service.dart';
 class PaneProvider extends ChangeNotifier {
   final StorageService _storageService;
   PaneLayout _layout;
+  
+  /// Whether we're on a mobile platform (iOS/Android)
+  static bool get isMobile => Platform.isIOS || Platform.isAndroid;
 
   PaneProvider(this._storageService)
-      : _layout = _storageService.loadLayout();
+      : _layout = _initLayout(_storageService);
+
+  /// Initialize layout based on platform
+  static PaneLayout _initLayout(StorageService storageService) {
+    if (isMobile) {
+      // Mobile always uses mobile layout (single pane with tabs)
+      return PaneLayout.mobileLayout();
+    }
+    final layout = storageService.loadLayout();
+    return _sanitizeLayout(layout);
+  }
+
+  static PaneLayout _sanitizeLayout(PaneLayout layout) {
+    return layout.copyWith(
+      root: _sanitizeNode(layout.root),
+    );
+  }
+
+  static PaneNode _sanitizeNode(PaneNode node) {
+    if (node is PaneLeaf) {
+      return PaneLeaf(
+        pane: node.pane.copyWith(
+          tabs: node.pane.tabs.map((tab) {
+            if (tab.title == 'Now Playing') {
+              return tab.copyWith(title: 'Playing');
+            }
+            return tab;
+          }).toList(),
+        ),
+      );
+    } else if (node is PaneSplit) {
+      return node.copyWith(
+        first: _sanitizeNode(node.first),
+        second: _sanitizeNode(node.second),
+      );
+    }
+    return node;
+  }
 
   PaneLayout get layout => _layout;
   bool get editMode => _layout.editMode;
@@ -313,7 +354,7 @@ class PaneProvider extends ChangeNotifier {
 
   /// Reset to default layout
   void resetLayout() {
-    _layout = PaneLayout.defaultLayout();
+    _layout = isMobile ? PaneLayout.mobileLayout() : PaneLayout.defaultLayout();
     _save();
     notifyListeners();
   }

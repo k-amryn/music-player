@@ -22,6 +22,8 @@ class SettingsProvider extends ChangeNotifier {
   
   // Layout getters
   double get borderSpacing => _settings.borderSpacing;
+  PaneTabPosition get tabPosition => _settings.tabPosition;
+  PaneTabAlignment get tabAlignment => _settings.tabAlignment;
 
   /// Update theme color
   Future<void> setThemeColor(Color color) async {
@@ -70,6 +72,20 @@ class SettingsProvider extends ChangeNotifier {
   /// Set border spacing
   Future<void> setBorderSpacing(double spacing) async {
     _settings = _settings.copyWith(borderSpacing: spacing);
+    await _save();
+    notifyListeners();
+  }
+
+  /// Set tab position
+  Future<void> setTabPosition(PaneTabPosition position) async {
+    _settings = _settings.copyWith(tabPosition: position);
+    await _save();
+    notifyListeners();
+  }
+
+  /// Set tab alignment
+  Future<void> setTabAlignment(PaneTabAlignment alignment) async {
+    _settings = _settings.copyWith(tabAlignment: alignment);
     await _save();
     notifyListeners();
   }

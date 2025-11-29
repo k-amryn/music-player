@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../core/providers/pane_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../core/providers/settings_provider.dart';
 import '../widgets/pane_container.dart';
 import 'settings_screen.dart';
 
@@ -37,23 +38,57 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
 
   bool get _isMacOS => Platform.isMacOS;
 
+  bool get _isMobile => !_isDesktop;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      body: Column(
-        children: [
-          // Custom titlebar for desktop
-          if (_isDesktop) _buildTitleBar(context, theme),
+    // On mobile, wrap content in SafeArea to respect system UI
+    Widget content = Column(
+      children: [
+        // Custom titlebar for desktop
+        if (_isDesktop) _buildTitleBar(context, theme),
 
-          // Main content - pane container
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(AppDimensions.spacingSm),
-              child: const PaneContainer(),
-            ),
+        // Main content - pane container
+        Expanded(
+          child: Consumer<SettingsProvider>(
+            builder: (context, settings, child) {
+              return Padding(
+                padding: EdgeInsets.all(settings.borderSpacing),
+                child: const PaneContainer(),
+              );
+            },
           ),
+        ),
+      ],
+    );
+
+    // Wrap in SafeArea only on mobile (iOS/Android)
+    if (_isMobile) {
+      content = SafeArea(
+        // Don't apply bottom padding - we handle that with tab bar
+        bottom: false,
+        child: content,
+      );
+    }
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          content,
+          
+          // Fixed settings button in bottom-right corner (mobile only)
+          if (_isMobile)
+            Positioned(
+              right: AppDimensions.spacingMd,
+              bottom: MediaQuery.of(context).padding.bottom + AppDimensions.spacingMd,
+              child: FloatingActionButton.small(
+                onPressed: () => _openSettings(context),
+                tooltip: 'Settings',
+                child: const Icon(Icons.settings),
+              ),
+            ),
         ],
       ),
     );

@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  isar_flutter_libs
   media_kit_libs_linux
   screen_retriever_linux
   window_manager

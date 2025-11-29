@@ -7,6 +7,8 @@ class AppSettings {
   final ThemeMode themeMode;
   final String? defaultLibraryFolder;
   final double borderSpacing;
+  final PaneTabPosition tabPosition;
+  final PaneTabAlignment tabAlignment;
 
   const AppSettings({
     this.libraryFolders = const [],
@@ -14,6 +16,8 @@ class AppSettings {
     this.themeMode = ThemeMode.system,
     this.defaultLibraryFolder,
     this.borderSpacing = 8.0,
+    this.tabPosition = PaneTabPosition.top,
+    this.tabAlignment = PaneTabAlignment.left,
   });
 
   AppSettings copyWith({
@@ -22,6 +26,8 @@ class AppSettings {
     ThemeMode? themeMode,
     String? defaultLibraryFolder,
     double? borderSpacing,
+    PaneTabPosition? tabPosition,
+    PaneTabAlignment? tabAlignment,
   }) {
     return AppSettings(
       libraryFolders: libraryFolders ?? this.libraryFolders,
@@ -29,6 +35,8 @@ class AppSettings {
       themeMode: themeMode ?? this.themeMode,
       defaultLibraryFolder: defaultLibraryFolder ?? this.defaultLibraryFolder,
       borderSpacing: borderSpacing ?? this.borderSpacing,
+      tabPosition: tabPosition ?? this.tabPosition,
+      tabAlignment: tabAlignment ?? this.tabAlignment,
     );
   }
 
@@ -39,6 +47,8 @@ class AppSettings {
       'themeMode': themeMode.name,
       'defaultLibraryFolder': defaultLibraryFolder,
       'borderSpacing': borderSpacing,
+      'tabPosition': tabPosition.name,
+      'tabAlignment': tabAlignment.name,
     };
   }
 
@@ -52,6 +62,17 @@ class AppSettings {
       ),
       defaultLibraryFolder: json['defaultLibraryFolder'] as String?,
       borderSpacing: (json['borderSpacing'] as num?)?.toDouble() ?? 8.0,
+      tabPosition: PaneTabPosition.values.firstWhere(
+        (e) => e.name == json['tabPosition'],
+        orElse: () => PaneTabPosition.top,
+      ),
+      tabAlignment: PaneTabAlignment.values.firstWhere(
+        (e) => e.name == json['tabAlignment'],
+        orElse: () => PaneTabAlignment.left,
+      ),
     );
   }
 }
+
+enum PaneTabPosition { top, bottom }
+enum PaneTabAlignment { left, center }

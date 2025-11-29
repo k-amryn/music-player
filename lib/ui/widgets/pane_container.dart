@@ -5,6 +5,7 @@ import '../../core/providers/pane_provider.dart';
 import '../../theme/app_theme.dart';
 import 'pane_widget.dart';
 import 'resizable_divider.dart';
+import '../../core/providers/settings_provider.dart';
 
 /// Container that renders the entire pane tree
 class PaneContainer extends StatelessWidget {
@@ -103,53 +104,63 @@ class _PaneSplitWidgetState extends State<_PaneSplitWidget> {
   Widget build(BuildContext context) {
     final isHorizontal = widget.split.direction == SplitDirection.horizontal;
 
+    final settings = context.watch<SettingsProvider>();
+    // Ensure minimum spacing of 1px as requested
+    final spacing = settings.borderSpacing < 1.0 ? 1.0 : settings.borderSpacing;
+    final handleSize = AppDimensions.paneDividerSize;
+    final hitAreaSize = spacing > handleSize ? spacing : handleSize;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         _totalSize = isHorizontal ? constraints.maxWidth : constraints.maxHeight;
+        final totalSize = _totalSize!;
         
-        // Use flex to avoid pixel overflow issues
-        final flex1 = (_ratio * 10000).round();
-        final flex2 = 10000 - flex1;
+        final splitPos = totalSize * _ratio;
+        final halfSpacing = spacing / 2;
+        
+        // Calculate sizes for panes
+        final size1 = splitPos - halfSpacing;
+        final size2 = totalSize - splitPos - halfSpacing;
 
-        if (isHorizontal) {
-          return Row(
-            children: [
-              Expanded(
-                flex: flex1,
-                child: widget.buildChild(widget.split.first, [...widget.path, 0]),
-              ),
-              ResizableDivider(
-                isHorizontal: true,
+        // Ensure panes don't have negative size
+        final validSize1 = size1 < 0 ? 0.0 : size1;
+        final validSize2 = size2 < 0 ? 0.0 : size2;
+
+        return Stack(
+          children: [
+            // First Pane
+            Positioned(
+              left: isHorizontal ? 0 : 0,
+              top: isHorizontal ? 0 : 0,
+              width: isHorizontal ? validSize1 : constraints.maxWidth,
+              height: isHorizontal ? constraints.maxHeight : validSize1,
+              child: widget.buildChild(widget.split.first, [...widget.path, 0]),
+            ),
+            
+            // Second Pane
+            Positioned(
+              left: isHorizontal ? splitPos + halfSpacing : 0,
+              top: isHorizontal ? 0 : splitPos + halfSpacing,
+              width: isHorizontal ? validSize2 : constraints.maxWidth,
+              height: isHorizontal ? constraints.maxHeight : validSize2,
+              child: widget.buildChild(widget.split.second, [...widget.path, 1]),
+            ),
+
+            // Divider Handle (Centered on splitPos)
+            Positioned(
+              left: isHorizontal ? splitPos - hitAreaSize / 2 : 0,
+              top: isHorizontal ? 0 : splitPos - hitAreaSize / 2,
+              width: isHorizontal ? hitAreaSize : constraints.maxWidth,
+              height: isHorizontal ? constraints.maxHeight : hitAreaSize,
+              child: ResizableDivider(
+                isHorizontal: isHorizontal,
                 onDrag: _handleDrag,
                 onDragStart: () => _isDragging = true,
                 onDragEnd: _handleDragEnd,
               ),
-              Expanded(
-                flex: flex2,
-                child: widget.buildChild(widget.split.second, [...widget.path, 1]),
-              ),
-            ],
-          );
-        } else {
-          return Column(
-            children: [
-              Expanded(
-                flex: flex1,
-                child: widget.buildChild(widget.split.first, [...widget.path, 0]),
-              ),
-              ResizableDivider(
-                isHorizontal: false,
-                onDrag: _handleDrag,
-                onDragStart: () => _isDragging = true,
-                onDragEnd: _handleDragEnd,
-              ),
-              Expanded(
-                flex: flex2,
-                child: widget.buildChild(widget.split.second, [...widget.path, 1]),
-              ),
-            ],
-          );
-        }
+            ),
+          ],
+        );
       },
     );
   }

@@ -32,15 +32,23 @@ dependencies:
   # Storage
   shared_preferences: ^2.3.4
 
+  # Database - Isar (high performance NoSQL)
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
+
   # Utilities
   uuid: ^4.5.1
   collection: ^1.19.0
   metadata_god: ^1.1.0
+  permission_handler: ^12.0.1
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  isar_generator: ^3.1.0+1
+  build_runner: ^2.4.13
 
 flutter:
   uses-material-design: true
