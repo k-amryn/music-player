@@ -93,7 +93,7 @@ class _PaneWidgetState extends State<PaneWidget> {
           editMode: _isMobile ? false : widget.editMode, // Disable edit mode on mobile
           showDragBar: widget.pane.tabs.length == 1,
           paneBackgroundColor: paneBackground,
-          borderSpacing: settings.borderSpacing,
+          borderSpacing: _isMobile ? 0.0 : settings.borderSpacing,
           isMobile: _isMobile, // Pass mobile flag
           onTabSelected: (index) {
             paneProvider.setActiveTab(widget.pane.id, index);
@@ -124,7 +124,13 @@ class _PaneWidgetState extends State<PaneWidget> {
             // Main pane content - no borders, brighter background
             Column(
               children: tabPosition == PaneTabPosition.bottom
-                  ? [contentArea, SafeArea(top: false, child: tabBar)]
+                  ? [
+                      contentArea,
+                      Container(
+                        color: theme.scaffoldBackgroundColor,
+                        child: SafeArea(top: false, child: tabBar),
+                      ),
+                    ]
                   : [tabBar, contentArea],
             ),
 
@@ -335,7 +341,7 @@ class _PaneWidgetState extends State<PaneWidget> {
                 borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
               ),
               child: Icon(
-                Icons.add,
+                Icons.add_rounded,
                 size: 32,
                 color: theme.colorScheme.primary,
               ),
@@ -448,7 +454,7 @@ class _PaneWidgetState extends State<PaneWidget> {
       items: <PopupMenuEntry<void>>[
         PopupMenuItem<void>(
           child: const ListTile(
-            leading: Icon(Icons.settings),
+            leading: Icon(Icons.settings_rounded),
             title: Text('Pane Settings'),
             dense: true,
             contentPadding: EdgeInsets.zero,
@@ -460,7 +466,7 @@ class _PaneWidgetState extends State<PaneWidget> {
         if (activeTab != null && activeTab.type == PaneType.library)
           PopupMenuItem<void>(
             child: const ListTile(
-              leading: Icon(Icons.refresh),
+              leading: Icon(Icons.refresh_rounded),
               title: Text('Refresh Metadata'),
               dense: true,
               contentPadding: EdgeInsets.zero,
@@ -491,7 +497,7 @@ class _PaneWidgetState extends State<PaneWidget> {
           const PopupMenuDivider(),
           PopupMenuItem<void>(
             child: const ListTile(
-              leading: Icon(Icons.add),
+              leading: Icon(Icons.add_rounded),
               title: Text('Add Tab'),
               dense: true,
               contentPadding: EdgeInsets.zero,
@@ -503,7 +509,7 @@ class _PaneWidgetState extends State<PaneWidget> {
         PopupMenuItem<void>(
           child: ListTile(
             leading: Icon(
-              paneProvider.editMode ? Icons.lock : Icons.edit,
+              paneProvider.editMode ? Icons.lock_rounded : Icons.edit_rounded,
             ),
             title: Text(
               paneProvider.editMode ? 'Exit Edit Mode' : 'Enter Edit Mode',
@@ -528,7 +534,7 @@ class _PaneWidgetState extends State<PaneWidget> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.album),
+              leading: const Icon(Icons.album_rounded),
               title: const Text('Playing'),
               onTap: () {
                 paneProvider.addTab(
@@ -539,7 +545,7 @@ class _PaneWidgetState extends State<PaneWidget> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.library_music),
+              leading: const Icon(Icons.library_music_rounded),
               title: const Text('Library'),
               onTap: () {
                 paneProvider.addTab(
@@ -550,7 +556,7 @@ class _PaneWidgetState extends State<PaneWidget> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.queue_music),
+              leading: const Icon(Icons.queue_music_rounded),
               title: const Text('Queue'),
               onTap: () {
                 paneProvider.addTab(

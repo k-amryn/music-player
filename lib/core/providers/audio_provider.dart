@@ -20,6 +20,7 @@ class AudioProvider extends ChangeNotifier {
   bool _isPlaying = false;
   bool _isBuffering = false;
   double _volume = 1.0;
+  double _speed = 1.0;
 
   // Stream subscriptions
   final List<StreamSubscription> _subscriptions = [];
@@ -65,6 +66,13 @@ class AudioProvider extends ChangeNotifier {
     );
 
     _subscriptions.add(
+      _audioService.rateStream.listen((rate) {
+        _speed = rate;
+        notifyListeners();
+      }),
+    );
+
+    _subscriptions.add(
       _audioService.playlistIndexStream.listen((index) {
         if (index != null && index >= 0 && index < _queue.length) {
           _currentIndex = index;
@@ -91,6 +99,7 @@ class AudioProvider extends ChangeNotifier {
   bool get isPlaying => _isPlaying;
   bool get isBuffering => _isBuffering;
   double get volume => _volume;
+  double get speed => _speed;
   bool get hasNext => _currentIndex < _queue.length - 1;
   bool get hasPrevious => _currentIndex > 0;
 
@@ -195,6 +204,14 @@ class AudioProvider extends ChangeNotifier {
     await _audioService.seek(position);
   }
 
+  /// Seek by offset (e.g. forward/backward 5 seconds)
+  Future<void> seekBy(Duration offset) async {
+    var newMs = _position.inMilliseconds + offset.inMilliseconds;
+    if (newMs < 0) newMs = 0;
+    if (newMs > _duration.inMilliseconds) newMs = _duration.inMilliseconds;
+    await seek(Duration(milliseconds: newMs));
+  }
+
   /// Skip to next track
   Future<void> next() async {
     if (!hasNext) return;
@@ -220,6 +237,11 @@ class AudioProvider extends ChangeNotifier {
   /// Set volume (0.0 to 1.0)
   Future<void> setVolume(double volume) async {
     await _audioService.setVolume(volume);
+  }
+
+  /// Set playback speed
+  Future<void> setSpeed(double speed) async {
+    await _audioService.setSpeed(speed);
   }
 
   @override

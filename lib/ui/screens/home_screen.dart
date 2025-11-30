@@ -66,10 +66,18 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
 
     // Wrap in SafeArea only on mobile (iOS/Android)
     if (_isMobile) {
-      content = SafeArea(
-        // Don't apply bottom padding - we handle that with tab bar
-        bottom: false,
-        child: content,
+      final isDark = theme.brightness == Brightness.dark;
+      final paneBackground = isDark
+          ? Color.lerp(theme.colorScheme.surface, Colors.white, 0.05)!
+          : Color.lerp(theme.colorScheme.surface, Colors.white, 0.7)!;
+
+      content = Container(
+        color: paneBackground,
+        child: SafeArea(
+          // Don't apply bottom padding - we handle that with tab bar
+          bottom: false,
+          child: content,
+        ),
       );
     }
 
@@ -78,15 +86,22 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
         children: [
           content,
           
-          // Fixed settings button in bottom-right corner (mobile only)
+          // Fixed settings button right-aligned, vertically centered in tab bar area (mobile only)
           if (_isMobile)
             Positioned(
-              right: AppDimensions.spacingMd,
-              bottom: MediaQuery.of(context).padding.bottom + AppDimensions.spacingMd,
-              child: FloatingActionButton.small(
-                onPressed: () => _openSettings(context),
-                tooltip: 'Settings',
-                child: const Icon(Icons.settings),
+              right: 0,
+              bottom: MediaQuery.of(context).padding.bottom,
+              width: 64,
+              height: 64,
+              child: Center(
+                child: IconButton(
+                  onPressed: () => _openSettings(context),
+                  icon: const Icon(Icons.menu_rounded),
+                  tooltip: 'Settings',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                  ),
+                ),
               ),
             ),
         ],
@@ -126,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
   Widget _buildSettingsButton(BuildContext context, ThemeData theme) {
     return IconButton(
       onPressed: () => _openSettings(context),
-      icon: const Icon(Icons.settings),
+      icon: const Icon(Icons.menu_rounded),
       iconSize: 20,
       tooltip: 'Settings',
       color: theme.colorScheme.onSurface,
@@ -139,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
     return TextButton.icon(
       onPressed: () => paneProvider.toggleEditMode(),
       icon: Icon(
-        paneProvider.editMode ? Icons.lock_open : Icons.edit,
+        paneProvider.editMode ? Icons.lock_open_rounded : Icons.edit_rounded,
         size: 16,
       ),
       label: Text(
@@ -160,12 +175,12 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
       mainAxisSize: MainAxisSize.min,
       children: [
         _WindowButton(
-          icon: Icons.remove,
+          icon: Icons.remove_rounded,
           onPressed: () => windowManager.minimize(),
           tooltip: 'Minimize',
         ),
         _WindowButton(
-          icon: Icons.crop_square,
+          icon: Icons.crop_square_rounded,
           onPressed: () async {
             if (await windowManager.isMaximized()) {
               await windowManager.unmaximize();
@@ -176,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
           tooltip: 'Maximize',
         ),
         _WindowButton(
-          icon: Icons.close,
+          icon: Icons.close_rounded,
           onPressed: () => windowManager.close(),
           tooltip: 'Close',
           isClose: true,

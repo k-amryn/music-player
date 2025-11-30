@@ -57,6 +57,7 @@ class _ResizableDividerState extends State<ResizableDivider> {
           color: Colors.transparent,
           child: Center(
             child: AnimatedContainer(
+              key: ValueKey(widget.isHorizontal),
               duration: const Duration(milliseconds: 150),
               width: widget.isHorizontal ? (isActive ? 3 : 1) : double.infinity,
               height: widget.isHorizontal ? double.infinity : (isActive ? 3 : 1),

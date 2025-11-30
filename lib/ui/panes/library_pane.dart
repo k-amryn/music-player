@@ -137,12 +137,14 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
     // Cache the items
     _itemsCache[path] = items;
     
-    setState(() {
-      _currentPath = path;
-      _items = items;
-      _isLoading = false;
-      _hasInitialized = true;
-    });
+    if (mounted) {
+      setState(() {
+        _currentPath = path;
+        _items = items;
+        _isLoading = false;
+        _hasInitialized = true;
+      });
+    }
 
     // Save current path to settings (skip if initial load from settings)
     if (!isInitial && mounted) {
@@ -252,7 +254,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
   void _onSearchChanged(String query) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
     
-    _debounceTimer = Timer(const Duration(seconds: 1), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
         if (query.isNotEmpty) {
           // Ensure we are in search results view when query executes
@@ -372,22 +374,25 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
   }
 
   Widget _buildToolbar(BuildContext context, ThemeData theme, bool showBack, bool showSearchResults) {
-    final isDark = theme.brightness == Brightness.dark;
-    final toolbarColor = isDark
-        ? Colors.white.withValues(alpha: 0.05)
-        : Colors.black.withValues(alpha: 0.03);
-    
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingSm),
-      color: toolbarColor,
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.scaffoldBackgroundColor,
+            width: 1,
+          ),
+        ),
+      ),
       child: Row(
         children: [
           // Back button
           if (showBack)
             IconButton(
               onPressed: _goBack,
-              icon: const Icon(Icons.arrow_back),
+              icon: const Icon(Icons.arrow_back_rounded),
               iconSize: 20,
               tooltip: 'Go back',
               padding: EdgeInsets.zero,
@@ -413,7 +418,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
           // Search toggle
           IconButton(
             onPressed: _toggleSearchBar,
-            icon: const Icon(Icons.search),
+            icon: const Icon(Icons.search_rounded),
             iconSize: 20,
             tooltip: 'Search',
             padding: EdgeInsets.zero,
@@ -423,7 +428,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
           // View toggle
           IconButton(
             onPressed: _toggleViewMode,
-            icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
+            icon: Icon(_isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
             iconSize: 20,
             tooltip: _isGridView ? 'List view' : 'Grid view',
             padding: EdgeInsets.zero,
@@ -435,23 +440,26 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
   }
 
   Widget _buildSearchBar(BuildContext context, ThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
-    final toolbarColor = isDark
-        ? Colors.white.withValues(alpha: 0.05)
-        : Colors.black.withValues(alpha: 0.03);
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingMd, vertical: 4),
-      color: toolbarColor,
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.scaffoldBackgroundColor,
+            width: 1,
+          ),
+        ),
+      ),
       child: TextField(
         controller: _searchController,
         onChanged: _onSearchChanged,
         autofocus: true,
         decoration: InputDecoration(
           hintText: 'Search library...',
-          prefixIcon: const Icon(Icons.search, size: 20),
+          prefixIcon: const Icon(Icons.search_rounded, size: 20),
           suffixIcon: IconButton(
-            icon: const Icon(Icons.close, size: 20),
+            icon: const Icon(Icons.close_rounded, size: 20),
             onPressed: _toggleSearchBar,
           ),
           contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -572,7 +580,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.folder_open,
+              Icons.folder_open_rounded,
               size: 64,
               color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
@@ -634,7 +642,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.folder_open,
+              Icons.folder_open_rounded,
               size: 64,
               color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
@@ -822,6 +830,14 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
       return _buildFolderPlaceholder(theme, isGrid: isGrid);
     }
 
+    if (coverArt is Uint8List && coverArt.isEmpty) {
+      return _buildFolderPlaceholder(theme, isGrid: isGrid);
+    }
+
+    if (coverArt is String && coverArt.isEmpty) {
+      return _buildFolderPlaceholder(theme, isGrid: isGrid);
+    }
+
     // Use a stateful image builder that falls back to folder placeholder on error
     return _CoverArtImage(
       coverArt: coverArt,
@@ -844,7 +860,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
         ),
         child: Center(
           child: Icon(
-            Icons.folder,
+            Icons.folder_rounded,
             size: 48,
             color: theme.colorScheme.primary.withValues(alpha: 0.7),
           ),
@@ -853,7 +869,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
     } else {
       return Center(
         child: Icon(
-          Icons.folder,
+          Icons.folder_rounded,
           size: 24,
           color: theme.colorScheme.primary,
         ),
@@ -882,7 +898,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
           child: Row(
             children: [
               Icon(
-                isPlaying ? Icons.play_arrow : Icons.music_note,
+                isPlaying ? Icons.play_arrow_rounded : Icons.music_note_rounded,
                 color: isPlaying ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
                 size: 24,
               ),
@@ -930,7 +946,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
         const PopupMenuItem<String>(
           value: 'play',
           child: ListTile(
-            leading: Icon(Icons.play_arrow),
+            leading: Icon(Icons.play_arrow_rounded),
             title: Text('Play All'),
             dense: true,
             contentPadding: EdgeInsets.zero,
@@ -939,7 +955,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
         const PopupMenuItem<String>(
           value: 'default',
           child: ListTile(
-            leading: Icon(Icons.star),
+            leading: Icon(Icons.star_rounded),
             title: Text('Set as Default'),
             dense: true,
             contentPadding: EdgeInsets.zero,
@@ -948,7 +964,7 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
         const PopupMenuItem<String>(
           value: 'refresh',
           child: ListTile(
-            leading: Icon(Icons.refresh),
+            leading: Icon(Icons.refresh_rounded),
             title: Text('Refresh Metadata'),
             dense: true,
             contentPadding: EdgeInsets.zero,
@@ -1017,6 +1033,7 @@ class _CoverArtImageState extends State<_CoverArtImage> {
     final art = widget.coverArt;
     
     if (art is Uint8List) {
+      if (art.isEmpty) return widget.placeholder;
       return Image.memory(
         art,
         fit: BoxFit.cover,
@@ -1028,6 +1045,7 @@ class _CoverArtImageState extends State<_CoverArtImage> {
         },
       );
     } else if (art is String) {
+      if (art.isEmpty) return widget.placeholder;
       return Image.file(
         File(art),
         fit: BoxFit.cover,
@@ -1039,6 +1057,6 @@ class _CoverArtImageState extends State<_CoverArtImage> {
         },
       );
     }
-    return const SizedBox.shrink();
+    return widget.placeholder;
   }
 }

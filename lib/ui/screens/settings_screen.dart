@@ -15,46 +15,51 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
     
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+    return Container(
+      color: theme.scaffoldBackgroundColor,
+      padding: EdgeInsets.only(top: isDesktop ? AppDimensions.titlebarHeight : 0),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Settings'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
-      ),
-      body: Consumer2<SettingsProvider, LibraryProvider>(
-        builder: (context, settings, library, child) {
-          return ListView(
-            padding: const EdgeInsets.all(AppDimensions.spacingMd),
-            children: [
-              // Library Section
-              _buildSectionHeader(context, 'Library', theme),
-              _buildLibrarySection(context, settings, theme),
-              
-              const SizedBox(height: AppDimensions.spacingMd),
-              
-              // Library Scanning Section
-              _buildLibraryScanSection(context, settings, library, theme),
-              
-              const SizedBox(height: AppDimensions.spacingLg),
-              
-              // Appearance Section
-              _buildSectionHeader(context, 'Appearance', theme),
-              _buildAppearanceSection(context, settings, theme),
-              
-              const SizedBox(height: AppDimensions.spacingLg),
-              
-              // Layout Section
-              _buildSectionHeader(context, 'Layout', theme),
-              _buildLayoutSection(context, theme),
-            ],
-          );
-        },
-      ),
-    );
-  }
+        body: Consumer2<SettingsProvider, LibraryProvider>(
+          builder: (context, settings, library, child) {
+            return ListView(
+              padding: const EdgeInsets.all(AppDimensions.spacingMd),
+              children: [
+                // Library Section
+                _buildSectionHeader(context, 'Library', theme),
+                _buildLibrarySection(context, settings, theme),
+                
+                const SizedBox(height: AppDimensions.spacingMd),
+                
+                // Library Scanning Section
+                _buildLibraryScanSection(context, settings, library, theme),
+                
+                const SizedBox(height: AppDimensions.spacingLg),
+                
+                // Appearance Section
+                _buildSectionHeader(context, 'Appearance', theme),
+                _buildAppearanceSection(context, settings, theme),
+                
+                const SizedBox(height: AppDimensions.spacingLg),
+                
+                // Layout Section
+                _buildSectionHeader(context, 'Layout', theme),
+                _buildLayoutSection(context, theme),
+              ],
+            );
+          },
+        ),
+    ),
+  );
+}
 
   Widget _buildSectionHeader(BuildContext context, String title, ThemeData theme) {
     return Padding(
@@ -97,7 +102,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               IconButton(
                 onPressed: () => _addLibraryFolder(context, settings),
-                icon: const Icon(Icons.add),
+                icon: const Icon(Icons.add_rounded),
                 tooltip: 'Add folder',
               ),
             ],
@@ -138,7 +143,7 @@ class SettingsScreen extends StatelessWidget {
 
     return ListTile(
       leading: Icon(
-        Icons.folder,
+        Icons.folder_rounded,
         color: isDefault ? theme.colorScheme.primary : null,
       ),
       title: Text(
@@ -174,7 +179,7 @@ class SettingsScreen extends StatelessWidget {
             ),
           IconButton(
             onPressed: () => settings.removeLibraryFolder(folder),
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(Icons.delete_outline_rounded),
             color: theme.colorScheme.error,
           ),
         ],
@@ -227,7 +232,7 @@ class SettingsScreen extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () => library.cancelScan(),
                   icon: Icon(
-                    Icons.cancel,
+                    Icons.cancel_rounded,
                     size: 18,
                     color: theme.colorScheme.error,
                   ),
@@ -241,7 +246,7 @@ class SettingsScreen extends StatelessWidget {
                   onPressed: settings.libraryFolders.isEmpty
                       ? null
                       : () => library.scanLibrary(settings.libraryFolders),
-                  icon: const Icon(Icons.refresh, size: 18),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
                   label: const Text('Scan Library'),
                 ),
             ],
@@ -275,7 +280,7 @@ class SettingsScreen extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.check_circle,
+                  Icons.check_circle_rounded,
                   size: 16,
                   color: theme.colorScheme.primary,
                 ),
@@ -323,16 +328,16 @@ class SettingsScreen extends StatelessWidget {
                     spacing: AppDimensions.spacingMd,
                     runSpacing: AppDimensions.spacingSm,
                     children: [
-                      _buildStatChip(context, Icons.music_note, '$tracks tracks', theme),
-                      _buildStatChip(context, Icons.person, '$artists artists', theme),
-                      _buildStatChip(context, Icons.album, '$albums albums', theme),
+                      _buildStatChip(context, Icons.music_note_rounded, '$tracks tracks', theme),
+                      _buildStatChip(context, Icons.person_rounded, '$artists artists', theme),
+                      _buildStatChip(context, Icons.album_rounded, '$albums albums', theme),
                     ],
                   ),
                   const SizedBox(height: AppDimensions.spacingMd),
                   TextButton.icon(
                     onPressed: () => _confirmClearCache(context, library),
                     icon: Icon(
-                      Icons.delete_outline,
+                      Icons.delete_outline_rounded,
                       size: 18,
                       color: theme.colorScheme.error,
                     ),
@@ -465,7 +470,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   child: isSelected
                       ? Icon(
-                          Icons.check,
+                          Icons.check_rounded,
                           color: color.computeLuminance() > 0.5
                               ? Colors.black
                               : Colors.white,
@@ -486,17 +491,17 @@ class SettingsScreen extends StatelessWidget {
               ButtonSegment(
                 value: ThemeMode.system,
                 label: Text('System'),
-                icon: Icon(Icons.brightness_auto),
+                icon: Icon(Icons.brightness_auto_rounded),
               ),
               ButtonSegment(
                 value: ThemeMode.light,
                 label: Text('Light'),
-                icon: Icon(Icons.brightness_high),
+                icon: Icon(Icons.brightness_high_rounded),
               ),
               ButtonSegment(
                 value: ThemeMode.dark,
                 label: Text('Dark'),
-                icon: Icon(Icons.brightness_2),
+                icon: Icon(Icons.brightness_2_rounded),
               ),
             ],
             selected: {settings.themeMode},
@@ -559,12 +564,12 @@ class SettingsScreen extends StatelessWidget {
                 ButtonSegment(
                   value: PaneTabPosition.top,
                   label: Text('Top'),
-                  icon: Icon(Icons.vertical_align_top),
+                  icon: Icon(Icons.vertical_align_top_rounded),
                 ),
                 ButtonSegment(
                   value: PaneTabPosition.bottom,
                   label: Text('Bottom'),
-                  icon: Icon(Icons.vertical_align_bottom),
+                  icon: Icon(Icons.vertical_align_bottom_rounded),
                 ),
               ],
               selected: {settings.tabPosition},
@@ -584,12 +589,12 @@ class SettingsScreen extends StatelessWidget {
                 ButtonSegment(
                   value: PaneTabAlignment.left,
                   label: Text('Left'),
-                  icon: Icon(Icons.format_align_left),
+                  icon: Icon(Icons.format_align_left_rounded),
                 ),
                 ButtonSegment(
                   value: PaneTabAlignment.center,
                   label: Text('Center'),
-                  icon: Icon(Icons.format_align_center),
+                  icon: Icon(Icons.format_align_center_rounded),
                 ),
               ],
               selected: {settings.tabAlignment},
@@ -600,31 +605,33 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: AppDimensions.spacingMd),
           ],
           
-          Text(
-            'Border Spacing',
-            style: theme.textTheme.bodyMedium,
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Slider(
-                  value: settings.borderSpacing,
-                  min: 0.0,
-                  max: 24.0,
-                  divisions: 24,
-                  label: settings.borderSpacing.round().toString(),
-                  onChanged: (value) => settings.setBorderSpacing(value),
+          if (isDesktop) ...[
+            Text(
+              'Border Spacing',
+              style: theme.textTheme.bodyMedium,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Slider(
+                    value: settings.borderSpacing,
+                    min: 0.0,
+                    max: 24.0,
+                    divisions: 24,
+                    label: settings.borderSpacing.round().toString(),
+                    onChanged: (value) => settings.setBorderSpacing(value),
+                  ),
                 ),
-              ),
-              Text(
-                '${settings.borderSpacing.round()}px',
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppDimensions.spacingSm),
+                Text(
+                  '${settings.borderSpacing.round()}px',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppDimensions.spacingSm),
+          ],
           ListTile(
-            leading: const Icon(Icons.restore),
+            leading: const Icon(Icons.restore_rounded),
             title: const Text('Reset Layout'),
             subtitle: const Text('Restore default pane layout'),
             contentPadding: EdgeInsets.zero,

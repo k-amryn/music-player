@@ -37,7 +37,7 @@ class NowPlayingPane extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.music_note,
+              Icons.music_note_rounded,
               size: 64,
               color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
@@ -96,10 +96,49 @@ class NowPlayingPane extends StatelessWidget {
 
           const SizedBox(height: AppDimensions.spacingSm),
 
-          // Playback controls
-          _buildPlaybackControls(context, audio, theme),
+          // Playback controls area with speed toggle
+          SizedBox(
+            height: 48,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                _buildPlaybackControls(context, audio, theme),
+                Positioned(
+                  left: 0,
+                  bottom: 0,
+                  top: 0,
+                  child: _buildSpeedControl(context, audio, theme),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSpeedControl(BuildContext context, AudioProvider audio, ThemeData theme) {
+    return PopupMenuButton<double>(
+      initialValue: audio.speed,
+      tooltip: 'Playback Speed',
+      icon: const Icon(Icons.speed_rounded, size: 20),
+      onSelected: (speed) => audio.setSpeed(speed),
+      itemBuilder: (context) => [0.25, 0.5, 0.75, 1.0, 1.25, 1.75, 2.0].map((speed) {
+        final isSelected = (audio.speed - speed).abs() < 0.01;
+        return PopupMenuItem(
+          value: speed,
+          child: Row(
+            children: [
+              if (isSelected)
+                Icon(Icons.check_rounded, size: 16, color: theme.colorScheme.primary)
+              else
+                const SizedBox(width: 16),
+              const SizedBox(width: 8),
+              Text('${speed}x'),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -127,7 +166,7 @@ class NowPlayingPane extends StatelessWidget {
 
   Widget _buildPlaceholder(ThemeData theme) {
     return Icon(
-      Icons.album,
+      Icons.album_rounded,
       size: 100,
       color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
     );
@@ -230,12 +269,23 @@ class NowPlayingPane extends StatelessWidget {
           onPressed: audio.hasPrevious || audio.position.inSeconds > 3
               ? () => audio.previous()
               : null,
-          icon: const Icon(Icons.skip_previous),
-          iconSize: 32,
+          icon: const Icon(Icons.skip_previous_rounded),
+          iconSize: 24,
           color: theme.colorScheme.onSurface,
         ),
 
-        const SizedBox(width: AppDimensions.spacingMd),
+        const SizedBox(width: AppDimensions.spacingSm),
+
+        // Rewind 5s
+        IconButton(
+          onPressed: () => audio.seekBy(const Duration(seconds: -5)),
+          icon: const Icon(Icons.replay_5_rounded),
+          iconSize: 24,
+          tooltip: 'Rewind 5s',
+          color: theme.colorScheme.onSurface,
+        ),
+
+        const SizedBox(width: AppDimensions.spacingSm),
 
         // Play/Pause button
         Container(
@@ -246,20 +296,31 @@ class NowPlayingPane extends StatelessWidget {
           child: IconButton(
             onPressed: () => audio.playPause(),
             icon: Icon(
-              audio.isPlaying ? Icons.pause : Icons.play_arrow,
+              audio.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
             ),
-            iconSize: 36,
+            iconSize: 32,
             color: theme.colorScheme.onPrimary,
           ),
         ),
 
-        const SizedBox(width: AppDimensions.spacingMd),
+        const SizedBox(width: AppDimensions.spacingSm),
+
+        // Forward 5s
+        IconButton(
+          onPressed: () => audio.seekBy(const Duration(seconds: 5)),
+          icon: const Icon(Icons.forward_5_rounded),
+          iconSize: 24,
+          tooltip: 'Forward 5s',
+          color: theme.colorScheme.onSurface,
+        ),
+
+        const SizedBox(width: AppDimensions.spacingSm),
 
         // Next button
         IconButton(
           onPressed: audio.hasNext ? () => audio.next() : null,
-          icon: const Icon(Icons.skip_next),
-          iconSize: 32,
+          icon: const Icon(Icons.skip_next_rounded),
+          iconSize: 24,
           color: theme.colorScheme.onSurface,
         ),
       ],

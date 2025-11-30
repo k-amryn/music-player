@@ -65,7 +65,7 @@ class _PaneTabBarState extends State<PaneTabBar> {
     // If in edit mode and only one tab, show centered floating pill drag bar
     if (widget.editMode && !hasMultipleTabs) {
       return Container(
-        height: AppDimensions.paneTabHeight,
+        height: isMobile ? AppDimensions.paneTabHeight : null,
         alignment: Alignment.center,
         margin: EdgeInsets.only(
           bottom: tabPosition == PaneTabPosition.top ? widget.borderSpacing : 0,
@@ -87,22 +87,29 @@ class _PaneTabBarState extends State<PaneTabBar> {
           isActive: isActive,
           theme: theme,
           isMobile: isMobile,
+          tabPosition: tabPosition,
         ),
       );
     }
 
+    final crossAlignment = isMobile
+        ? CrossAxisAlignment.center
+        : (tabPosition == PaneTabPosition.bottom ? CrossAxisAlignment.start : CrossAxisAlignment.end);
+
     Widget content = Container(
-      height: isMobile ? 64 : AppDimensions.paneTabHeight,
+      height: isMobile ? 64 : null,
       // Transparent background - tabs float over it
       color: Colors.transparent,
-      margin: EdgeInsets.only(
-        bottom: tabPosition == PaneTabPosition.top ? widget.borderSpacing : 0,
-        top: tabPosition == PaneTabPosition.bottom ? widget.borderSpacing : 0,
-      ),
+      margin: isMobile
+          ? const EdgeInsets.only(top: 8.0)
+          : EdgeInsets.only(
+              bottom: tabPosition == PaneTabPosition.top ? widget.borderSpacing : 0,
+              top: tabPosition == PaneTabPosition.bottom ? widget.borderSpacing : 0,
+            ),
       child: Row(
-        crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.end,
-        mainAxisAlignment: tabAlignment == PaneTabAlignment.center 
-            ? MainAxisAlignment.center 
+        crossAxisAlignment: crossAlignment,
+        mainAxisAlignment: tabAlignment == PaneTabAlignment.center
+            ? MainAxisAlignment.center
             : MainAxisAlignment.start,
         children: [
           // Drag bar when in edit mode and single tab (shouldn't happen here due to check above)
@@ -115,7 +122,7 @@ class _PaneTabBarState extends State<PaneTabBar> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.end,
+                crossAxisAlignment: crossAlignment,
                 children: tabWidgets,
               ),
             )
@@ -125,7 +132,7 @@ class _PaneTabBarState extends State<PaneTabBar> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.end,
+                  crossAxisAlignment: crossAlignment,
                   children: tabWidgets,
                 ),
               ),
@@ -182,7 +189,7 @@ class _PaneTabBarState extends State<PaneTabBar> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
-            Icons.drag_handle,
+            Icons.drag_handle_rounded,
             size: 16,
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -197,6 +204,7 @@ class _PaneTabBarState extends State<PaneTabBar> {
     required bool isActive,
     required ThemeData theme,
     required bool isMobile,
+    required PaneTabPosition tabPosition,
   }) {
     final isDragging = _dragIndex == index;
     final isDark = theme.brightness == Brightness.dark;
@@ -213,115 +221,128 @@ class _PaneTabBarState extends State<PaneTabBar> {
     final showLeftLine = _dragTargetIndex == index && !isDragging;
     final showRightLine = _dragTargetIndex == index + 1 && !isDragging;
 
-    Widget tabContent = Container(
-      margin: EdgeInsets.only(
+    final borderRadius = widget.borderSpacing == 0
+        ? (tabPosition == PaneTabPosition.bottom
+            ? const BorderRadius.vertical(bottom: Radius.circular(AppDimensions.radiusMd))
+            : const BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusMd)))
+        : BorderRadius.circular(AppDimensions.radiusMd);
+
+    Widget tabWidget = Padding(
+      padding: EdgeInsets.only(
         left: index == 0 ? 0 : 4,
         right: 4,
       ),
-      decoration: isMobile 
-          ? null // No background for mobile tabs
-          : BoxDecoration(
-              color: isActive ? activeColor : inactiveColor,
-              borderRadius: widget.borderSpacing == 0
-                  ? const BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusMd))
-                  : BorderRadius.circular(AppDimensions.radiusMd),
-            ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: isMobile 
-                ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
-                : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: isMobile
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _getIconForPaneType(tab.type),
-                        size: 24,
-                        color: isActive
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        tab.title,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: isActive
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.onSurfaceVariant,
-                          fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _getIconForPaneType(tab.type),
-                        size: 16,
-                        color: isActive
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        tab.title,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: isActive
-                              ? theme.colorScheme.onSurface
-                              : theme.colorScheme.onSurfaceVariant,
-                          fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
-                        ),
-                      ),
-                      if (widget.editMode && widget.tabs.length > 1) ...[
-                        const SizedBox(width: 4),
-                        InkWell(
-                          onTap: () => widget.onTabClose?.call(tab.id),
-                          borderRadius: BorderRadius.circular(10),
-                          child: Padding(
-                            padding: const EdgeInsets.all(2),
-                            child: Icon(
-                              Icons.close,
-                              size: 14,
-                              color: theme.colorScheme.onSurfaceVariant,
+      child: Material(
+        color: Colors.transparent,
+        child: Ink(
+          decoration: isMobile
+              ? BoxDecoration(
+                  color: isActive ? activeColor : inactiveColor,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                )
+              : BoxDecoration(
+                  color: isActive ? activeColor : inactiveColor,
+                  borderRadius: borderRadius,
+                ),
+          child: InkWell(
+            onTap: () => widget.onTabSelected(index),
+            onSecondaryTap: widget.onContextMenu,
+            onLongPress: widget.onContextMenu,
+            borderRadius: isMobile
+                ? BorderRadius.circular(AppDimensions.radiusMd)
+                : borderRadius,
+            child: Stack(
+              children: [
+                Padding(
+                  padding: isMobile
+                      ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
+                      : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: isMobile
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _getIconForPaneType(tab.type),
+                              size: 24,
+                              color: isActive
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurfaceVariant,
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            Text(
+                              tab.title,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: isActive
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurfaceVariant,
+                                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _getIconForPaneType(tab.type),
+                              size: 16,
+                              color: isActive
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              tab.title,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isActive
+                                    ? theme.colorScheme.onSurface
+                                    : theme.colorScheme.onSurfaceVariant,
+                                fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
+                              ),
+                            ),
+                            if (widget.editMode && widget.tabs.length > 1) ...[
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap: () => widget.onTabClose?.call(tab.id),
+                                borderRadius: BorderRadius.circular(10),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(2),
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    size: 14,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                      ],
-                    ],
+                ),
+                if (showLeftLine)
+                  Positioned(
+                    left: 0,
+                    top: 4,
+                    bottom: 4,
+                    width: 2,
+                    child: Container(
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
+                if (showRightLine)
+                  Positioned(
+                    right: 0,
+                    top: 4,
+                    bottom: 4,
+                    width: 2,
+                    child: Container(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+              ],
+            ),
           ),
-          if (showLeftLine)
-            Positioned(
-              left: 0,
-              top: 4,
-              bottom: 4,
-              width: 2,
-              child: Container(
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          if (showRightLine)
-            Positioned(
-              right: 0,
-              top: 4,
-              bottom: 4,
-              width: 2,
-              child: Container(
-                color: theme.colorScheme.primary,
-              ),
-            ),
-        ],
+        ),
       ),
-    );
-
-    Widget tabWidget = GestureDetector(
-      onTap: () => widget.onTabSelected(index),
-      onSecondaryTap: widget.onContextMenu,
-      onLongPress: widget.onContextMenu,
-      child: tabContent,
     );
 
     // Make tabs draggable in edit mode
@@ -368,52 +389,76 @@ class _PaneTabBarState extends State<PaneTabBar> {
           });
         },
         builder: (context, candidateData, rejectedData) {
-          return Draggable<Map<String, dynamic>>(
-            key: ValueKey('drag_${tab.id}'),
-            data: {
-              'type': 'tab',
-              'tabId': tab.id,
-            },
-            onDragStarted: () => setState(() => _dragIndex = index),
-            onDragEnd: (_) => setState(() {
-              _dragIndex = null;
-              _dragTargetIndex = null;
-            }),
-            feedback: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-              color: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _getIconForPaneType(tab.type),
-                      size: 16,
+          final feedback = Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _getIconForPaneType(tab.type),
+                    size: 16,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    tab.title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onPrimaryContainer,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      tab.title,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            childWhenDragging: Opacity(
-              opacity: 0.3,
-              child: Container(key: tabKey, child: tabWidget),
-            ),
+          );
+
+          final childWhenDragging = Opacity(
+            opacity: 0.3,
             child: Container(key: tabKey, child: tabWidget),
           );
+
+          final child = Container(key: tabKey, child: tabWidget);
+
+          if (isMobile) {
+            return LongPressDraggable<Map<String, dynamic>>(
+              key: ValueKey('drag_${tab.id}'),
+              data: {
+                'type': 'tab',
+                'tabId': tab.id,
+              },
+              onDragStarted: () => setState(() => _dragIndex = index),
+              onDragEnd: (_) => setState(() {
+                _dragIndex = null;
+                _dragTargetIndex = null;
+              }),
+              feedback: feedback,
+              childWhenDragging: childWhenDragging,
+              child: child,
+            );
+          } else {
+            return Draggable<Map<String, dynamic>>(
+              key: ValueKey('drag_${tab.id}'),
+              data: {
+                'type': 'tab',
+                'tabId': tab.id,
+              },
+              onDragStarted: () => setState(() => _dragIndex = index),
+              onDragEnd: (_) => setState(() {
+                _dragIndex = null;
+                _dragTargetIndex = null;
+              }),
+              feedback: feedback,
+              childWhenDragging: childWhenDragging,
+              child: child,
+            );
+          }
         },
       );
     }
@@ -424,13 +469,13 @@ class _PaneTabBarState extends State<PaneTabBar> {
   IconData _getIconForPaneType(PaneType type) {
     switch (type) {
       case PaneType.nowPlaying:
-        return Icons.album;
+        return Icons.album_rounded;
       case PaneType.library:
-        return Icons.library_music;
+        return Icons.library_music_rounded;
       case PaneType.queue:
-        return Icons.queue_music;
+        return Icons.queue_music_rounded;
       case PaneType.custom:
-        return Icons.extension;
+        return Icons.extension_rounded;
     }
   }
 }

@@ -28,7 +28,7 @@ class QueuePane extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.queue_music,
+              Icons.queue_music_rounded,
               size: 64,
               color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
@@ -86,17 +86,20 @@ class QueuePane extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, AudioProvider audio, ThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
-    final headerColor = isDark
-        ? Colors.white.withValues(alpha: 0.05)
-        : Colors.black.withValues(alpha: 0.03);
-    
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppDimensions.spacingMd,
         vertical: AppDimensions.spacingSm,
       ),
-      color: headerColor,
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.scaffoldBackgroundColor,
+            width: 1,
+          ),
+        ),
+      ),
       child: Row(
         children: [
           Text(
@@ -108,7 +111,7 @@ class QueuePane extends StatelessWidget {
           const Spacer(),
           TextButton.icon(
             onPressed: () => audio.clearQueue(),
-            icon: const Icon(Icons.clear_all, size: 18),
+            icon: const Icon(Icons.clear_all_rounded, size: 18),
             label: const Text('Clear'),
             style: TextButton.styleFrom(
               foregroundColor: theme.colorScheme.error,
@@ -148,7 +151,7 @@ class QueuePane extends StatelessWidget {
                 width: 32,
                 child: isPlaying
                     ? Icon(
-                        Icons.play_arrow,
+                        Icons.play_arrow_rounded,
                         color: theme.colorScheme.primary,
                         size: 20,
                       )
@@ -201,7 +204,7 @@ class QueuePane extends StatelessWidget {
               // Remove button
               IconButton(
                 onPressed: () => audio.removeFromQueue(index),
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close_rounded),
                 iconSize: 18,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -212,7 +215,7 @@ class QueuePane extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(8),
                   child: Icon(
-                    Icons.drag_handle,
+                    Icons.drag_handle_rounded,
                     color: theme.colorScheme.onSurfaceVariant,
                     size: 20,
                   ),

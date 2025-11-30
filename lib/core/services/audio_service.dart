@@ -23,6 +23,9 @@ class AudioService {
   /// Current volume (0.0 to 1.0)
   Stream<double> get volumeStream => _player.stream.volume;
 
+  /// Current playback rate
+  Stream<double> get rateStream => _player.stream.rate;
+
   /// Buffering stream
   Stream<bool> get bufferingStream => _player.stream.buffering;
 
@@ -40,6 +43,9 @@ class AudioService {
 
   /// Current volume
   double get volume => _player.state.volume;
+
+  /// Current rate
+  double get rate => _player.state.rate;
 
   /// Play a track
   Future<void> play(models.Track track) async {
