@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 import '../models/library_folder.dart';
 import '../models/track.dart';
+import '../models/models.dart';
 import '../database/database.dart';
 import '../services/library_database_service.dart';
 import '../services/metadata_scanner_service.dart';
@@ -31,11 +32,16 @@ class LibraryProvider extends ChangeNotifier {
   List<LibraryItem> _searchResults = [];
   bool _isSearching = false;
 
+  // Selection state
+  final Set<String> _selectedPaths = {};
+
   bool get isScanning => _isScanning;
   ScanProgress? get scanProgress => _scanProgress;
   String get searchQuery => _searchQuery;
   List<LibraryItem> get searchResults => _searchResults;
   bool get isSearching => _isSearching;
+  Set<String> get selectedPaths => _selectedPaths;
+  bool get isSelectionMode => _selectedPaths.isNotEmpty;
 
   /// Request storage permissions
   Future<bool> requestPermissions() async {
@@ -248,11 +254,170 @@ class LibraryProvider extends ChangeNotifier {
       title: entity.title,
       artist: entity.artist,
       album: entity.album,
+      albumArtist: entity.albumArtist,
       duration: entity.duration ?? Duration.zero,
       trackNumber: entity.trackNumber,
       discNumber: entity.discNumber,
       genre: entity.genre,
       year: entity.year,
+      bitrate: entity.bitrate,
+      codec: entity.codec,
+    );
+  }
+
+  /// Toggle selection of a path
+  void toggleSelection(String path) {
+    if (_selectedPaths.contains(path)) {
+      _selectedPaths.remove(path);
+    } else {
+      _selectedPaths.add(path);
+    }
+    notifyListeners();
+  }
+
+  /// Deselect all items
+  void deselectAll() {
+    _selectedPaths.clear();
+    notifyListeners();
+  }
+
+  /// Check if a path is selected
+  bool isSelected(String path) {
+    return _selectedPaths.contains(path);
+  }
+
+  /// Get metadata for selected items
+  Future<SelectionMetadata> getSelectionMetadata() async {
+    if (_selectedPaths.isEmpty) {
+      return const SelectionMetadata(
+        totalDuration: Duration.zero,
+        album: null,
+        artist: null,
+        albumArtist: null,
+        genre: null,
+        year: null,
+        codec: null,
+        avgBitrate: null,
+        count: 0,
+      );
+    }
+
+    final tracks = <Track>[];
+    
+    // Collect all tracks from selected paths (recursively for folders)
+    for (final path in _selectedPaths) {
+      if (await FileSystemEntity.isDirectory(path)) {
+        tracks.addAll(await getAllTracksInDirectory(path));
+      } else {
+        // It's a file
+        final trackEntity = await _dbService.getTrackByPath(path);
+        if (trackEntity != null) {
+          tracks.add(_trackEntityToTrack(trackEntity));
+        } else {
+          // Fallback if not in DB
+          tracks.add(Track.fromPath(path));
+        }
+      }
+    }
+
+    if (tracks.isEmpty) {
+      return const SelectionMetadata(
+        totalDuration: Duration.zero,
+        album: null,
+        artist: null,
+        albumArtist: null,
+        genre: null,
+        year: null,
+        codec: null,
+        avgBitrate: null,
+        count: 0,
+      );
+    }
+
+    // Calculate total duration
+    Duration totalDuration = Duration.zero;
+    for (final track in tracks) {
+      totalDuration += track.duration;
+    }
+
+    // Helper function to get common value or "Various"
+    String? getCommonOrVarious(String? Function(Track) getter, String variousLabel) {
+      final first = getter(tracks.first);
+      if (first == null || first.isEmpty) {
+        // Check if all are null/empty
+        for (final track in tracks) {
+          if (getter(track) != null && getter(track)!.isNotEmpty) {
+            return variousLabel;
+          }
+        }
+        return null;
+      }
+      for (int i = 1; i < tracks.length; i++) {
+        final value = getter(tracks[i]);
+        if (value != first) {
+          return variousLabel;
+        }
+      }
+      return first;
+    }
+
+    // Check for common album
+    final commonAlbum = getCommonOrVarious((t) => t.album, 'Various albums');
+    
+    // Check for common artist
+    final commonArtist = getCommonOrVarious((t) => t.artist, 'Various artists');
+    
+    // Check for common album artist
+    final commonAlbumArtist = getCommonOrVarious((t) => t.albumArtist, 'Various');
+    
+    // Check for common genre
+    final commonGenre = getCommonOrVarious((t) => t.genre, 'Various genres');
+    
+    // Check for common codec
+    final commonCodec = getCommonOrVarious((t) => t.codec, 'Mixed');
+
+    // Check for year range
+    String? yearDisplay;
+    int? minYear;
+    int? maxYear;
+    for (final track in tracks) {
+      if (track.year != null && track.year! > 0) {
+        if (minYear == null || track.year! < minYear) minYear = track.year;
+        if (maxYear == null || track.year! > maxYear) maxYear = track.year;
+      }
+    }
+    if (minYear != null && maxYear != null) {
+      if (minYear == maxYear) {
+        yearDisplay = '$minYear';
+      } else {
+        yearDisplay = '$minYear - $maxYear';
+      }
+    }
+
+    // Calculate average bitrate
+    int? avgBitrate;
+    int totalBitrate = 0;
+    int bitrateCount = 0;
+    for (final track in tracks) {
+      if (track.bitrate != null && track.bitrate! > 0) {
+        totalBitrate += track.bitrate!;
+        bitrateCount++;
+      }
+    }
+    if (bitrateCount > 0) {
+      avgBitrate = (totalBitrate / bitrateCount).round();
+    }
+
+    return SelectionMetadata(
+      totalDuration: totalDuration,
+      album: commonAlbum,
+      artist: commonArtist,
+      albumArtist: commonAlbumArtist,
+      genre: commonGenre,
+      year: yearDisplay,
+      codec: commonCodec,
+      avgBitrate: avgBitrate,
+      count: tracks.length,
     );
   }
 

@@ -8,6 +8,7 @@ enum PaneType {
   nowPlaying,
   library,
   queue,
+  selection,
   custom,
 }
 

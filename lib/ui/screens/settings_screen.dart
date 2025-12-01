@@ -540,17 +540,6 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppDimensions.spacingMd),
           
-          // Edit mode - desktop only
-          if (isDesktop) ...[
-            SwitchListTile(
-              title: const Text('Edit Mode'),
-              subtitle: const Text('Enable to rearrange panes'),
-              value: paneProvider.editMode,
-              onChanged: (value) => paneProvider.setEditMode(value),
-              contentPadding: EdgeInsets.zero,
-            ),
-            const SizedBox(height: AppDimensions.spacingMd),
-          ],
           
           // Tab Position - desktop only
           if (isDesktop) ...[

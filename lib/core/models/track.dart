@@ -8,6 +8,7 @@ class Track {
   final String title;
   final String artist;
   final String album;
+  final String? albumArtist;
   final Duration duration;
   final String? albumArtPath;
   final Uint8List? albumArtBytes;
@@ -15,6 +16,8 @@ class Track {
   final int? discNumber;
   final String? genre;
   final int? year;
+  final int? bitrate;
+  final String? codec;
 
   const Track({
     required this.id,
@@ -22,6 +25,7 @@ class Track {
     required this.title,
     this.artist = 'Unknown Artist',
     this.album = 'Unknown Album',
+    this.albumArtist,
     this.duration = Duration.zero,
     this.albumArtPath,
     this.albumArtBytes,
@@ -29,6 +33,8 @@ class Track {
     this.discNumber,
     this.genre,
     this.year,
+    this.bitrate,
+    this.codec,
   });
 
   /// Creates a Track from a file path with basic metadata
@@ -49,6 +55,7 @@ class Track {
     String? title,
     String? artist,
     String? album,
+    String? albumArtist,
     Duration? duration,
     String? albumArtPath,
     Uint8List? albumArtBytes,
@@ -56,6 +63,8 @@ class Track {
     int? discNumber,
     String? genre,
     int? year,
+    int? bitrate,
+    String? codec,
   }) {
     return Track(
       id: id ?? this.id,
@@ -63,6 +72,7 @@ class Track {
       title: title ?? this.title,
       artist: artist ?? this.artist,
       album: album ?? this.album,
+      albumArtist: albumArtist ?? this.albumArtist,
       duration: duration ?? this.duration,
       albumArtPath: albumArtPath ?? this.albumArtPath,
       albumArtBytes: albumArtBytes ?? this.albumArtBytes,
@@ -70,6 +80,8 @@ class Track {
       discNumber: discNumber ?? this.discNumber,
       genre: genre ?? this.genre,
       year: year ?? this.year,
+      bitrate: bitrate ?? this.bitrate,
+      codec: codec ?? this.codec,
     );
   }
 
@@ -80,6 +92,7 @@ class Track {
       'title': title,
       'artist': artist,
       'album': album,
+      'albumArtist': albumArtist,
       'duration': duration.inMilliseconds,
       'albumArtPath': albumArtPath,
       // Note: albumArtBytes is not serialized to JSON to avoid large payloads
@@ -87,6 +100,8 @@ class Track {
       'discNumber': discNumber,
       'genre': genre,
       'year': year,
+      'bitrate': bitrate,
+      'codec': codec,
     };
   }
 
@@ -97,12 +112,15 @@ class Track {
       title: json['title'] as String,
       artist: json['artist'] as String? ?? 'Unknown Artist',
       album: json['album'] as String? ?? 'Unknown Album',
+      albumArtist: json['albumArtist'] as String?,
       duration: Duration(milliseconds: json['duration'] as int? ?? 0),
       albumArtPath: json['albumArtPath'] as String?,
       trackNumber: json['trackNumber'] as int?,
       discNumber: json['discNumber'] as int?,
       genre: json['genre'] as String?,
       year: json['year'] as int?,
+      bitrate: json['bitrate'] as int?,
+      codec: json['codec'] as String?,
     );
   }
 

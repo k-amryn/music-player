@@ -12,6 +12,7 @@ import '../panes/base_pane.dart';
 import '../panes/now_playing_pane.dart';
 import '../panes/library_pane.dart';
 import '../panes/queue_pane.dart';
+import '../panes/selection_pane.dart';
 
 /// Widget that displays a single pane with its tab bar and content
 class PaneWidget extends StatefulWidget {
@@ -90,7 +91,7 @@ class _PaneWidgetState extends State<PaneWidget> {
           paneId: widget.pane.id,
           tabs: widget.pane.tabs,
           activeIndex: widget.pane.activeTabIndex,
-          editMode: _isMobile ? false : widget.editMode, // Disable edit mode on mobile
+          editMode: widget.editMode,
           showDragBar: widget.pane.tabs.length == 1,
           paneBackgroundColor: paneBackground,
           borderSpacing: _isMobile ? 0.0 : settings.borderSpacing,
@@ -101,8 +102,8 @@ class _PaneWidgetState extends State<PaneWidget> {
           onTabClose: (tabId) {
             paneProvider.removeTab(widget.pane.id, tabId);
           },
-          onContextMenu: () {
-            _showPaneContextMenu(context);
+          onContextMenu: (position) {
+            _showPaneContextMenu(context, position);
           },
         );
 
@@ -134,8 +135,8 @@ class _PaneWidgetState extends State<PaneWidget> {
                   : [tabBar, contentArea],
             ),
 
-            // Drop zone indicators (not on mobile)
-            if (!_isMobile && widget.editMode && candidateData.isNotEmpty)
+            // Drop zone indicators (allow on mobile now)
+            if (widget.editMode && candidateData.isNotEmpty)
               _buildDropIndicators(theme),
           ],
         );
@@ -153,8 +154,8 @@ class _PaneWidgetState extends State<PaneWidget> {
 
     // Use IndexedStack to keep all tab widgets in memory
     return GestureDetector(
-      onSecondaryTap: () => _showPaneContextMenu(context),
-      onLongPress: () => _showPaneContextMenu(context),
+      onSecondaryTapUp: (details) => _showPaneContextMenu(context, details.globalPosition),
+      onLongPressStart: (details) => _showPaneContextMenu(context, details.globalPosition),
       child: IndexedStack(
         index: activeIndex,
         children: tabs.map((tab) => _buildPaneContent(tab)).toList(),
@@ -178,6 +179,8 @@ class _PaneWidgetState extends State<PaneWidget> {
         );
       case PaneType.queue:
         return QueuePane(key: ValueKey('queue_${tab.id}'));
+      case PaneType.selection:
+        return SelectionPane(key: ValueKey('selection_${tab.id}'));
       case PaneType.custom:
         return BasePaneContent(
           key: ValueKey('custom_${tab.id}'),
@@ -444,13 +447,19 @@ class _PaneWidgetState extends State<PaneWidget> {
     return [];
   }
 
-  void _showPaneContextMenu(BuildContext context) {
+  void _showPaneContextMenu(BuildContext context, [Offset? position]) {
     final paneProvider = context.read<PaneProvider>();
     final activeTab = widget.pane.activeTab;
 
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final pos = position ?? overlay.localToGlobal(Offset.zero) + const Offset(100, 100);
+
     showMenu<void>(
       context: context,
-      position: RelativeRect.fromLTRB(100, 100, 100, 100),
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(pos.dx, pos.dy, 0, 0),
+        Offset.zero & overlay.size,
+      ),
       items: <PopupMenuEntry<void>>[
         PopupMenuItem<void>(
           child: const ListTile(
@@ -562,6 +571,17 @@ class _PaneWidgetState extends State<PaneWidget> {
                 paneProvider.addTab(
                   widget.pane.id,
                   PaneTab.create(title: 'Queue', type: PaneType.queue),
+                );
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.checklist_rounded),
+              title: const Text('Selection'),
+              onTap: () {
+                paneProvider.addTab(
+                  widget.pane.id,
+                  PaneTab.create(title: 'Selection', type: PaneType.selection),
                 );
                 Navigator.pop(context);
               },

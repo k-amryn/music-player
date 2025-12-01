@@ -46,6 +46,8 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
   // Cache for folder contents to avoid re-fetching
   final Map<String?, List<LibraryItem>> _itemsCache = {};  // null key = root
 
+  Offset? _lastPointerPosition;
+
   @override
   bool get wantKeepAlive => true;  // Keep state when switching tabs
 
@@ -270,6 +272,14 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
     });
   }
 
+  void _toggleSelection(String path) {
+    context.read<LibraryProvider>().toggleSelection(path);
+  }
+
+  void _deselectAll() {
+    context.read<LibraryProvider>().deselectAll();
+  }
+
   void _setAsDefaultFolder(String path) {
     final paneProvider = context.read<PaneProvider>();
     paneProvider.updateTabSettings(
@@ -374,6 +384,10 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
   }
 
   Widget _buildToolbar(BuildContext context, ThemeData theme, bool showBack, bool showSearchResults) {
+    final library = context.watch<LibraryProvider>();
+    final isSelectionMode = library.isSelectionMode;
+    final selectedCount = library.selectedPaths.length;
+
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingSm),
@@ -388,52 +402,78 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
       ),
       child: Row(
         children: [
-          // Back button
-          if (showBack)
+          if (isSelectionMode) ...[
+            // Selection mode toolbar
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text(
+                  '$selectedCount items selected',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
             IconButton(
-              onPressed: _goBack,
-              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: _deselectAll,
+              icon: const Icon(Icons.close_rounded),
               iconSize: 20,
-              tooltip: 'Go back',
+              tooltip: 'Clear selection',
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
-          
-          // Path breadcrumb
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Text(
-                showSearchResults
-                    ? 'Search results'
-                    : _currentPath != null
-                        ? context.read<LibraryProvider>().getFileName(_currentPath!)
-                        : 'Library',
-                style: theme.textTheme.bodyMedium,
-                overflow: TextOverflow.ellipsis,
+          ] else ...[
+            // Normal toolbar
+            // Back button
+            if (showBack)
+              IconButton(
+                onPressed: _goBack,
+                icon: const Icon(Icons.arrow_back_rounded),
+                iconSize: 20,
+                tooltip: 'Go back',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            
+            // Path breadcrumb
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text(
+                  showSearchResults
+                      ? 'Search results'
+                      : _currentPath != null
+                          ? context.read<LibraryProvider>().getFileName(_currentPath!)
+                          : 'Library',
+                  style: theme.textTheme.bodyMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
-          ),
-          
-          // Search toggle
-          IconButton(
-            onPressed: _toggleSearchBar,
-            icon: const Icon(Icons.search_rounded),
-            iconSize: 20,
-            tooltip: 'Search',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
+            
+            // Search toggle
+            IconButton(
+              onPressed: _toggleSearchBar,
+              icon: const Icon(Icons.search_rounded),
+              iconSize: 20,
+              tooltip: 'Search',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
 
-          // View toggle
-          IconButton(
-            onPressed: _toggleViewMode,
-            icon: Icon(_isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
-            iconSize: 20,
-            tooltip: _isGridView ? 'List view' : 'Grid view',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
+            // View toggle
+            IconButton(
+              onPressed: _toggleViewMode,
+              icon: Icon(_isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
+              iconSize: 20,
+              tooltip: _isGridView ? 'List view' : 'Grid view',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
+          ],
         ],
       ),
     );
@@ -745,40 +785,85 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _navigateTo(item.path),
-        onSecondaryTapUp: (details) => _showFolderContextMenu(context, item.path, details.globalPosition),
-        onLongPress: () => _showFolderContextMenu(context, item.path, null),
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-        hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.08),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: _buildCoverArt(item.coverArt, theme, isGrid: true),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppDimensions.spacingXs, 0, AppDimensions.spacingXs, AppDimensions.spacingXs),
-              child: Text(
-                item.name,
-                style: theme.textTheme.bodySmall,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    final library = context.watch<LibraryProvider>();
+    final isSelected = library.isSelected(item.path);
+    final isSelectionMode = library.isSelectionMode;
 
-  Widget _buildListFolder(BuildContext context, dynamic itemOrPath, ThemeData theme) {
+    return Material(
+      color: isSelected
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
+          : Colors.transparent,
+      child: Listener(
+        onPointerDown: (event) => _lastPointerPosition = event.position,
+        child: InkWell(
+          onTap: () {
+            if (isSelectionMode) {
+              _toggleSelection(item.path);
+            } else {
+              _navigateTo(item.path);
+            }
+          },
+          onSecondaryTapUp: (details) {
+            if (!isSelected) {
+              _toggleSelection(item.path);
+            }
+            _showFolderContextMenu(context, item.path, details.globalPosition);
+          },
+          onLongPress: () {
+            if (!isSelected) {
+              _toggleSelection(item.path);
+            }
+            _showFolderContextMenu(context, item.path, _lastPointerPosition);
+          },
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+          hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: _buildCoverArt(item.coverArt, theme, isGrid: true),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(AppDimensions.spacingXs, 0, AppDimensions.spacingXs, AppDimensions.spacingXs),
+                    child: Text(
+                      item.name,
+                      style: theme.textTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              if (isSelectionMode || isSelected)
+                Positioned(
+                  top: 4,
+                  left: 4,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                      size: 20,
+                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+    ));
+    }
+  
+    Widget _buildListFolder(BuildContext context, dynamic itemOrPath, ThemeData theme) {
     final LibraryItem item;
     if (itemOrPath is LibraryItem) {
       item = itemOrPath;
@@ -794,31 +879,64 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
       );
     }
 
+    final library = context.watch<LibraryProvider>();
+    final isSelected = library.isSelected(item.path);
+    final isSelectionMode = library.isSelectionMode;
+
     return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _navigateTo(item.path),
-        onLongPress: () => _showFolderContextMenu(context, item.path, null),
-        hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: _buildCoverArt(item.coverArt, theme, isGrid: false),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  item.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium,
+      color: isSelected
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
+          : Colors.transparent,
+      child: Listener(
+        onPointerDown: (event) => _lastPointerPosition = event.position,
+        child: InkWell(
+          onTap: () {
+            if (isSelectionMode) {
+              _toggleSelection(item.path);
+            } else {
+              _navigateTo(item.path);
+            }
+          },
+          onSecondaryTapUp: (details) {
+            if (!isSelected) {
+              _toggleSelection(item.path);
+            }
+            _showFolderContextMenu(context, item.path, details.globalPosition);
+          },
+          onLongPress: () {
+            if (!isSelected) {
+              _toggleSelection(item.path);
+            }
+            _showFolderContextMenu(context, item.path, _lastPointerPosition);
+          },
+          hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: isSelectionMode
+                      ? Center(
+                          child: Icon(
+                            isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                      : _buildCoverArt(item.coverArt, theme, isGrid: false),
                 ),
-              ),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    item.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -885,35 +1003,67 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
   ) {
     final isPlaying = audio.currentTrack?.path == item.path;
     final duration = item.formattedDuration;
+    final library = context.watch<LibraryProvider>();
+    final isSelected = library.isSelected(item.path);
+    final isSelectionMode = library.isSelectionMode;
     
     return Material(
-      color: isPlaying
-          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.1)
-          : Colors.transparent,
-      child: InkWell(
-        onTap: () => _playItem(item),
-        hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: Row(
-            children: [
-              Icon(
-                isPlaying ? Icons.play_arrow_rounded : Icons.music_note_rounded,
-                color: isPlaying ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
-                size: 24,
-              ),
-              const SizedBox(width: 32), // Match ListTile leading spacing roughly
-              Expanded(
-                child: Text(
-                  item.name.replaceAll(RegExp(r'\.[^.]+$'), ''),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: isPlaying ? theme.colorScheme.primary : null,
-                    fontWeight: isPlaying ? FontWeight.w500 : null,
+      color: isSelected
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
+          : isPlaying
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.1)
+              : Colors.transparent,
+      child: Listener(
+        onPointerDown: (event) => _lastPointerPosition = event.position,
+        child: InkWell(
+          onTap: () {
+            if (isSelectionMode) {
+              _toggleSelection(item.path);
+            } else {
+              _playItem(item);
+            }
+          },
+          onSecondaryTapUp: (details) {
+            if (!isSelected) {
+              _toggleSelection(item.path);
+            }
+            _showFolderContextMenu(context, item.path, details.globalPosition);
+          },
+          onLongPress: () {
+            if (!isSelected) {
+              _toggleSelection(item.path);
+            }
+            _showFolderContextMenu(context, item.path, _lastPointerPosition);
+          },
+          hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            child: Row(
+              children: [
+                if (isSelectionMode)
+                  Icon(
+                    isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                    color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                    size: 24,
+                  )
+                else
+                  Icon(
+                    isPlaying ? Icons.play_arrow_rounded : Icons.music_note_rounded,
+                    color: isPlaying ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                    size: 24,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 32), // Match ListTile leading spacing roughly
+                Expanded(
+                  child: Text(
+                    item.name.replaceAll(RegExp(r'\.[^.]+$'), ''),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isPlaying ? theme.colorScheme.primary : null,
+                      fontWeight: isPlaying ? FontWeight.w500 : null,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
               if (duration.isNotEmpty) ...[
                 const SizedBox(width: 16),
                 Text(
@@ -929,10 +1079,13 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
           ),
         ),
       ),
-    );
+    ));
   }
 
   void _showFolderContextMenu(BuildContext context, String path, Offset? position) {
+    final library = context.read<LibraryProvider>();
+    final isSelected = library.isSelected(path);
+
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final pos = position ?? overlay.localToGlobal(Offset.zero) + const Offset(100, 100);
     
@@ -943,6 +1096,19 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
         Offset.zero & overlay.size,
       ),
       items: [
+        PopupMenuItem<String>(
+          value: 'select',
+          child: ListTile(
+            leading: Icon(
+              isSelected
+                  ? Icons.check_box_rounded
+                  : Icons.check_box_outline_blank_rounded
+            ),
+            title: Text(isSelected ? 'Deselect' : 'Select'),
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
         const PopupMenuItem<String>(
           value: 'play',
           child: ListTile(
@@ -972,7 +1138,9 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
         ),
       ],
     ).then((value) {
-      if (value == 'play') {
+      if (value == 'select') {
+        _toggleSelection(path);
+      } else if (value == 'play') {
         _playAllInFolder(path);
       } else if (value == 'default') {
         _setAsDefaultFolder(path);

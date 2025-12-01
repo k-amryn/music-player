@@ -15,6 +15,11 @@ class PaneContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<PaneProvider>(
       builder: (context, paneProvider, child) {
+        // On mobile, we want to force a single pane view initially, but the user requested
+        // to remove the forced structure. So we just render the root node as is.
+        // If we wanted to force single pane on mobile, we would check Platform.isAndroid/iOS
+        // and render just the active pane. But per instructions, we revert to standard behavior.
+        
         return _buildPaneNode(
           context,
           paneProvider.layout.root,

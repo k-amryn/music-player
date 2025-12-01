@@ -86,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
         children: [
           content,
           
-          // Fixed settings button right-aligned, vertically centered in tab bar area (mobile only)
+          // Fixed menu button right-aligned, bottom area (mobile only)
           if (_isMobile)
             Positioned(
               right: 0,
@@ -94,14 +94,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
               width: 64,
               height: 64,
               child: Center(
-                child: IconButton(
-                  onPressed: () => _openSettings(context),
-                  icon: const Icon(Icons.menu_rounded),
-                  tooltip: 'Settings',
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                  ),
-                ),
+                child: _buildSettingsButton(context, theme),
               ),
             ),
         ],
@@ -122,14 +115,12 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
               const SizedBox(width: 78), // Space for traffic lights
               _buildSettingsButton(context, theme),
               const Spacer(),
-              _buildEditModeButton(context, theme),
               const SizedBox(width: AppDimensions.spacingSm),
             ] else ...[
               // Windows/Linux: settings on left, controls on right
               const SizedBox(width: AppDimensions.spacingSm),
               _buildSettingsButton(context, theme),
               const Spacer(),
-              _buildEditModeButton(context, theme),
               _buildWindowControls(context, theme),
             ],
           ],
@@ -139,34 +130,61 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
   }
 
   Widget _buildSettingsButton(BuildContext context, ThemeData theme) {
-    return IconButton(
-      onPressed: () => _openSettings(context),
+    return PopupMenuButton<String>(
       icon: const Icon(Icons.menu_rounded),
       iconSize: 20,
-      tooltip: 'Settings',
-      color: theme.colorScheme.onSurface,
-    );
-  }
-
-  Widget _buildEditModeButton(BuildContext context, ThemeData theme) {
-    final paneProvider = context.watch<PaneProvider>();
-
-    return TextButton.icon(
-      onPressed: () => paneProvider.toggleEditMode(),
-      icon: Icon(
-        paneProvider.editMode ? Icons.lock_open_rounded : Icons.edit_rounded,
-        size: 16,
-      ),
-      label: Text(
-        paneProvider.editMode ? 'Done' : 'Edit',
-        style: const TextStyle(fontSize: 12),
-      ),
-      style: TextButton.styleFrom(
-        foregroundColor: paneProvider.editMode
-            ? theme.colorScheme.primary
-            : theme.colorScheme.onSurfaceVariant,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-      ),
+      tooltip: 'Menu',
+      color: theme.colorScheme.surface,
+      onSelected: (value) {
+        switch (value) {
+          case 'settings':
+            _openSettings(context);
+            break;
+          case 'edit_mode':
+            context.read<PaneProvider>().toggleEditMode();
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'edit_mode',
+          child: Consumer<PaneProvider>(
+            builder: (context, paneProvider, child) {
+              return Row(
+                children: [
+                  Icon(
+                    paneProvider.editMode ? Icons.lock_open_rounded : Icons.edit_rounded,
+                    size: 20,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    paneProvider.editMode ? 'Exit Edit Mode' : 'Edit Mode',
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        PopupMenuItem(
+          value: 'settings',
+          child: Row(
+            children: [
+              Icon(
+                Icons.settings_rounded,
+                size: 20,
+                color: theme.colorScheme.onSurface,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Settings',
+                style: TextStyle(color: theme.colorScheme.onSurface),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

@@ -33,6 +33,12 @@ class MetadataScannerService {
   static MetadataScannerService? _instance;
   final LibraryDatabaseService _db = LibraryDatabaseService.instance;
   
+  /// Number of concurrent file scans
+  static const int _concurrentScans = 6;
+  
+  /// Batch size for processing (should be multiple of _concurrentScans)
+  static const int _batchSize = 24;
+  
   /// Supported audio file extensions
   static const Set<String> supportedExtensions = {
     '.mp3', '.flac', '.wav', '.aac', '.m4a', '.ogg', '.wma', '.opus', '.aiff',
@@ -211,32 +217,39 @@ class MetadataScannerService {
     int scannedFiles = startingCount;
     
     // Process files in batches for efficiency
-    const batchSize = 10;
     final batches = <List<File>>[];
     
-    for (int i = 0; i < audioFiles.length; i += batchSize) {
-      final end = (i + batchSize < audioFiles.length) ? i + batchSize : audioFiles.length;
+    for (int i = 0; i < audioFiles.length; i += _batchSize) {
+      final end = (i + _batchSize < audioFiles.length) ? i + _batchSize : audioFiles.length;
       batches.add(audioFiles.sublist(i, end));
     }
     
     for (final batch in batches) {
       final tracks = <TrackEntity>[];
       
-      for (final file in batch) {
-        try {
-          final track = await _scanFile(file);
-          if (track != null) {
-            tracks.add(track);
-          }
-        } catch (e) {
-          debugPrint('Error scanning ${file.path}: $e');
-        }
+      // Process files concurrently in chunks of _concurrentScans
+      for (int i = 0; i < batch.length; i += _concurrentScans) {
+        final end = (i + _concurrentScans < batch.length) ? i + _concurrentScans : batch.length;
+        final chunk = batch.sublist(i, end);
         
-        scannedFiles++;
+        // Scan files concurrently
+        final futures = chunk.map((file) async {
+          try {
+            return await _scanFile(file);
+          } catch (e) {
+            debugPrint('Error scanning ${file.path}: $e');
+            return null;
+          }
+        });
+        
+        final results = await Future.wait(futures);
+        tracks.addAll(results.whereType<TrackEntity>());
+        
+        scannedFiles += chunk.length;
         yield ScanProgress(
           totalFiles: totalFiles,
           scannedFiles: scannedFiles,
-          currentFile: p.basename(file.path),
+          currentFile: '${chunk.length} files processed',
         );
       }
       
@@ -281,32 +294,39 @@ class MetadataScannerService {
     int scannedFiles = 0;
     
     // Process files in batches for efficiency
-    const batchSize = 10;
     final batches = <List<File>>[];
     
-    for (int i = 0; i < audioFiles.length; i += batchSize) {
-      final end = (i + batchSize < audioFiles.length) ? i + batchSize : audioFiles.length;
+    for (int i = 0; i < audioFiles.length; i += _batchSize) {
+      final end = (i + _batchSize < audioFiles.length) ? i + _batchSize : audioFiles.length;
       batches.add(audioFiles.sublist(i, end));
     }
     
     for (final batch in batches) {
       final tracks = <TrackEntity>[];
       
-      for (final file in batch) {
-        try {
-          final track = await _scanFile(file);
-          if (track != null) {
-            tracks.add(track);
-          }
-        } catch (e) {
-          debugPrint('Error scanning ${file.path}: $e');
-        }
+      // Process files concurrently in chunks of _concurrentScans
+      for (int i = 0; i < batch.length; i += _concurrentScans) {
+        final end = (i + _concurrentScans < batch.length) ? i + _concurrentScans : batch.length;
+        final chunk = batch.sublist(i, end);
         
-        scannedFiles++;
+        // Scan files concurrently
+        final futures = chunk.map((file) async {
+          try {
+            return await _scanFile(file);
+          } catch (e) {
+            debugPrint('Error scanning ${file.path}: $e');
+            return null;
+          }
+        });
+        
+        final results = await Future.wait(futures);
+        tracks.addAll(results.whereType<TrackEntity>());
+        
+        scannedFiles += chunk.length;
         yield ScanProgress(
           totalFiles: totalFiles,
           scannedFiles: scannedFiles,
-          currentFile: p.basename(file.path),
+          currentFile: '${chunk.length} files processed',
         );
       }
       
@@ -331,6 +351,10 @@ class MetadataScannerService {
       return null; // Already up to date
     }
     
+    // Derive codec from file extension
+    final extension = p.extension(file.path).toLowerCase();
+    final codec = _extensionToCodec(extension);
+    
     final track = TrackEntity()
       ..path = file.path
       ..fileName = p.basename(file.path)
@@ -339,6 +363,7 @@ class MetadataScannerService {
       ..title = p.basenameWithoutExtension(file.path)  // Default title
       ..artist = 'Unknown Artist'
       ..album = 'Unknown Album'
+      ..codec = codec
       ..fileSize = stat.size
       ..lastModifiedMs = stat.modified.millisecondsSinceEpoch
       ..lastScannedMs = DateTime.now().millisecondsSinceEpoch;
@@ -365,6 +390,15 @@ class MetadataScannerService {
       track.discNumber = metadata.discNumber;
       track.durationMs = metadata.durationMs?.toInt();
       
+      // Estimate bitrate from file size and duration
+      if (track.durationMs != null && track.durationMs! > 0 && stat.size > 0) {
+        // bitrate = (file size in bits) / (duration in seconds)
+        // Result is in bits per second
+        final durationSeconds = track.durationMs! / 1000.0;
+        final fileSizeBits = stat.size * 8;
+        track.bitrate = (fileSizeBits / durationSeconds).round();
+      }
+      
       // Set lowercase fields for indexing
       track.titleLower = track.title.toLowerCase();
       track.artistLower = track.artist.toLowerCase();
@@ -385,6 +419,32 @@ class MetadataScannerService {
     }
     
     return track;
+  }
+  
+  /// Convert file extension to codec name
+  String _extensionToCodec(String extension) {
+    switch (extension) {
+      case '.mp3':
+        return 'MP3';
+      case '.flac':
+        return 'FLAC';
+      case '.wav':
+        return 'WAV';
+      case '.aac':
+        return 'AAC';
+      case '.m4a':
+        return 'AAC';
+      case '.ogg':
+        return 'Vorbis';
+      case '.opus':
+        return 'Opus';
+      case '.wma':
+        return 'WMA';
+      case '.aiff':
+        return 'AIFF';
+      default:
+        return extension.replaceFirst('.', '').toUpperCase();
+    }
   }
 
   /// Scan a single file by path

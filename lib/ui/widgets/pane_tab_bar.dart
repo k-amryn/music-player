@@ -20,7 +20,7 @@ class PaneTabBar extends StatefulWidget {
   final ValueChanged<int> onTabSelected;
   final ValueChanged<String>? onTabClose;
   final Function(String tabId, String targetPaneId)? onTabDroppedToPane;
-  final VoidCallback? onContextMenu;
+  final void Function(Offset)? onContextMenu;
   
   const PaneTabBar({
     super.key,
@@ -45,6 +45,7 @@ class PaneTabBar extends StatefulWidget {
 class _PaneTabBarState extends State<PaneTabBar> {
   int? _dragIndex;
   int? _dragTargetIndex;
+  Offset? _lastPointerPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +118,16 @@ class _PaneTabBarState extends State<PaneTabBar> {
             _buildDragBar(theme),
 
           // Tabs
-          if (tabAlignment == PaneTabAlignment.center)
+          if (widget.isMobile)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: crossAlignment,
+              children: tabWidgets.map<Widget>((child) => SizedBox(
+                width: 72,
+                child: child,
+              )).toList(),
+            )
+          else if (tabAlignment == PaneTabAlignment.center)
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -142,8 +152,8 @@ class _PaneTabBarState extends State<PaneTabBar> {
     );
 
     return GestureDetector(
-      onSecondaryTap: widget.onContextMenu,
-      onLongPress: widget.onContextMenu,
+      onSecondaryTapUp: (details) => widget.onContextMenu?.call(details.globalPosition),
+      onLongPressStart: (details) => widget.onContextMenu?.call(details.globalPosition),
       child: content,
     );
   }
@@ -228,57 +238,62 @@ class _PaneTabBarState extends State<PaneTabBar> {
         : BorderRadius.circular(AppDimensions.radiusMd);
 
     Widget tabWidget = Padding(
-      padding: EdgeInsets.only(
-        left: index == 0 ? 0 : 4,
-        right: 4,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: Ink(
-          decoration: isMobile
-              ? BoxDecoration(
-                  color: isActive ? activeColor : inactiveColor,
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                )
-              : BoxDecoration(
-                  color: isActive ? activeColor : inactiveColor,
-                  borderRadius: borderRadius,
-                ),
-          child: InkWell(
-            onTap: () => widget.onTabSelected(index),
-            onSecondaryTap: widget.onContextMenu,
-            onLongPress: widget.onContextMenu,
-            borderRadius: isMobile
-                ? BorderRadius.circular(AppDimensions.radiusMd)
-                : borderRadius,
-            child: Stack(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Listener(
+        onPointerDown: (event) => _lastPointerPosition = event.position,
+        child: Material(
+          color: Colors.transparent,
+          child: Ink(
+            decoration: isMobile
+                ? BoxDecoration(
+                    color: isActive ? activeColor : inactiveColor,
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                  )
+                : BoxDecoration(
+                    color: isActive ? activeColor : inactiveColor,
+                    borderRadius: borderRadius,
+                  ),
+            child: InkWell(
+              onTap: () => widget.onTabSelected(index),
+              onSecondaryTapUp: (details) => widget.onContextMenu?.call(details.globalPosition),
+              onLongPress: () {
+                if (_lastPointerPosition != null) {
+                  widget.onContextMenu?.call(_lastPointerPosition!);
+                }
+              },
+              borderRadius: isMobile
+                  ? BorderRadius.circular(AppDimensions.radiusMd)
+                  : borderRadius,
+              child: Stack(
               children: [
                 Padding(
                   padding: isMobile
                       ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
                       : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: isMobile
-                      ? Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _getIconForPaneType(tab.type),
-                              size: 24,
-                              color: isActive
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              tab.title,
-                              style: theme.textTheme.labelSmall?.copyWith(
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _getIconForPaneType(tab.type),
+                                size: 24,
                                 color: isActive
                                     ? theme.colorScheme.primary
                                     : theme.colorScheme.onSurfaceVariant,
-                                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                tab.title,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: isActive
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
                         )
                       : Row(
                           mainAxisSize: MainAxisSize.min,
@@ -343,7 +358,7 @@ class _PaneTabBarState extends State<PaneTabBar> {
           ),
         ),
       ),
-    );
+    ));
 
     // Make tabs draggable in edit mode
     if (widget.editMode) {
@@ -433,6 +448,7 @@ class _PaneTabBarState extends State<PaneTabBar> {
                 'type': 'tab',
                 'tabId': tab.id,
               },
+              delay: const Duration(milliseconds: 300),
               onDragStarted: () => setState(() => _dragIndex = index),
               onDragEnd: (_) => setState(() {
                 _dragIndex = null;
@@ -474,6 +490,8 @@ class _PaneTabBarState extends State<PaneTabBar> {
         return Icons.library_music_rounded;
       case PaneType.queue:
         return Icons.queue_music_rounded;
+      case PaneType.selection:
+        return Icons.checklist_rounded;
       case PaneType.custom:
         return Icons.extension_rounded;
     }
