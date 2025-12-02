@@ -109,6 +109,12 @@ class NowPlayingPane extends StatelessWidget {
                   top: 0,
                   child: _buildSpeedControl(context, audio, theme),
                 ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  top: 0,
+                  child: _buildVolumeControl(context, audio, theme),
+                ),
               ],
             ),
           ),
@@ -118,28 +124,84 @@ class NowPlayingPane extends StatelessWidget {
   }
 
   Widget _buildSpeedControl(BuildContext context, AudioProvider audio, ThemeData theme) {
-    return PopupMenuButton<double>(
-      initialValue: audio.speed,
+    return IconButton(
+      onPressed: () {
+        // Cycle speeds: 0.5, 1.0, 1.5, 2.0
+        final newSpeed = audio.speed >= 2.0 ? 0.5 : audio.speed + 0.5;
+        audio.setSpeed(newSpeed);
+      },
+      icon: Text(
+        '${audio.speed}x',
+        style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
+      ),
       tooltip: 'Playback Speed',
-      icon: const Icon(Icons.speed_rounded, size: 20),
-      onSelected: (speed) => audio.setSpeed(speed),
-      itemBuilder: (context) => [0.25, 0.5, 0.75, 1.0, 1.25, 1.75, 2.0].map((speed) {
-        final isSelected = (audio.speed - speed).abs() < 0.01;
-        return PopupMenuItem(
-          value: speed,
-          child: Row(
-            children: [
-              if (isSelected)
-                Icon(Icons.check_rounded, size: 16, color: theme.colorScheme.primary)
-              else
-                const SizedBox(width: 16),
-              const SizedBox(width: 8),
-              Text('${speed}x'),
-            ],
-          ),
-        );
-      }).toList(),
     );
+  }
+
+  Widget _buildVolumeControl(BuildContext context, AudioProvider audio, ThemeData theme) {
+    return Builder(
+      builder: (context) {
+        return IconButton(
+          icon: Icon(_getVolumeIcon(audio.volume)),
+          tooltip: 'Volume',
+          onPressed: () {
+            final renderBox = context.findRenderObject() as RenderBox;
+            final offset = renderBox.localToGlobal(Offset.zero);
+            
+            showMenu(
+              context: context,
+              position: RelativeRect.fromLTRB(
+                offset.dx,
+                offset.dy - 160,
+                offset.dx + renderBox.size.width,
+                offset.dy,
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 40,
+                maxWidth: 40,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              items: [
+                PopupMenuItem(
+                  enabled: false,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Center(
+                    child: SizedBox(
+                      height: 140,
+                      width: 30,
+                      child: Consumer<AudioProvider>(
+                        builder: (context, audio, _) {
+                          return RotatedBox(
+                            quarterTurns: 3,
+                            child: SliderTheme(
+                              data: theme.sliderTheme.copyWith(
+                                trackHeight: 4,
+                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                              ),
+                              child: Slider(
+                                value: audio.volume,
+                                onChanged: (value) => audio.setVolume(value),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    );
+  }
+
+  IconData _getVolumeIcon(double volume) {
+    if (volume <= 0) return Icons.volume_off_rounded;
+    if (volume < 0.5) return Icons.volume_down_rounded;
+    return Icons.volume_up_rounded;
   }
 
   Widget _buildAlbumArt(BuildContext context, dynamic track, ThemeData theme) {
@@ -261,69 +323,87 @@ class NowPlayingPane extends StatelessWidget {
     AudioProvider audio,
     ThemeData theme,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Previous button
-        IconButton(
-          onPressed: audio.hasPrevious || audio.position.inSeconds > 3
-              ? () => audio.previous()
-              : null,
-          icon: const Icon(Icons.skip_previous_rounded),
-          iconSize: 24,
-          color: theme.colorScheme.onSurface,
-        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Shrink gap if pane is narrow
+        final isNarrow = constraints.maxWidth < 300;
+        final gap = isNarrow ? 2.0 : AppDimensions.spacingSm;
 
-        const SizedBox(width: AppDimensions.spacingSm),
-
-        // Rewind 5s
-        IconButton(
-          onPressed: () => audio.seekBy(const Duration(seconds: -5)),
-          icon: const Icon(Icons.replay_5_rounded),
-          iconSize: 24,
-          tooltip: 'Rewind 5s',
-          color: theme.colorScheme.onSurface,
-        ),
-
-        const SizedBox(width: AppDimensions.spacingSm),
-
-        // Play/Pause button
-        Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary,
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            onPressed: () => audio.playPause(),
-            icon: Icon(
-              audio.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Previous button
+            IconButton(
+              onPressed: audio.hasPrevious || audio.position.inSeconds > 3
+                  ? () => audio.previous()
+                  : null,
+              icon: const Icon(Icons.skip_previous_rounded),
+              iconSize: 24,
+              padding: isNarrow ? const EdgeInsets.all(4) : null,
+              constraints: isNarrow ? const BoxConstraints() : null,
+              color: theme.colorScheme.onSurface,
             ),
-            iconSize: 32,
-            color: theme.colorScheme.onPrimary,
-          ),
-        ),
 
-        const SizedBox(width: AppDimensions.spacingSm),
+            SizedBox(width: gap),
 
-        // Forward 5s
-        IconButton(
-          onPressed: () => audio.seekBy(const Duration(seconds: 5)),
-          icon: const Icon(Icons.forward_5_rounded),
-          iconSize: 24,
-          tooltip: 'Forward 5s',
-          color: theme.colorScheme.onSurface,
-        ),
+            // Rewind 5s
+            IconButton(
+              onPressed: () => audio.seekBy(const Duration(seconds: -5)),
+              icon: const Icon(Icons.replay_5_rounded),
+              iconSize: 24,
+              tooltip: 'Rewind 5s',
+              padding: isNarrow ? const EdgeInsets.all(4) : null,
+              constraints: isNarrow ? const BoxConstraints() : null,
+              color: theme.colorScheme.onSurface,
+            ),
 
-        const SizedBox(width: AppDimensions.spacingSm),
+            SizedBox(width: gap),
 
-        // Next button
-        IconButton(
-          onPressed: audio.hasNext ? () => audio.next() : null,
-          icon: const Icon(Icons.skip_next_rounded),
-          iconSize: 24,
-          color: theme.colorScheme.onSurface,
-        ),
-      ],
+            // Play/Pause button
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                onPressed: () => audio.playPause(),
+                icon: Icon(
+                  audio.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                ),
+                iconSize: 32,
+                padding: isNarrow ? const EdgeInsets.all(4) : null,
+                constraints: isNarrow ? const BoxConstraints() : null,
+                color: theme.colorScheme.onPrimary,
+              ),
+            ),
+
+            SizedBox(width: gap),
+
+            // Forward 5s
+            IconButton(
+              onPressed: () => audio.seekBy(const Duration(seconds: 5)),
+              icon: const Icon(Icons.forward_5_rounded),
+              iconSize: 24,
+              tooltip: 'Forward 5s',
+              padding: isNarrow ? const EdgeInsets.all(4) : null,
+              constraints: isNarrow ? const BoxConstraints() : null,
+              color: theme.colorScheme.onSurface,
+            ),
+
+            SizedBox(width: gap),
+
+            // Next button
+            IconButton(
+              onPressed: audio.hasNext ? () => audio.next() : null,
+              icon: const Icon(Icons.skip_next_rounded),
+              iconSize: 24,
+              padding: isNarrow ? const EdgeInsets.all(4) : null,
+              constraints: isNarrow ? const BoxConstraints() : null,
+              color: theme.colorScheme.onSurface,
+            ),
+          ],
+        );
+      },
     );
   }
 

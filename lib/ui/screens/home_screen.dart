@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import '../../core/models/pane.dart';
 import '../../core/providers/pane_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/providers/settings_provider.dart';
@@ -113,13 +114,17 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
             // macOS puts window controls on left
             if (_isMacOS) ...[
               const SizedBox(width: 78), // Space for traffic lights
-              _buildSettingsButton(context, theme),
               const Spacer(),
+              _buildEditControls(context, theme),
+              const SizedBox(width: AppDimensions.spacingSm),
+              _buildSettingsButton(context, theme),
               const SizedBox(width: AppDimensions.spacingSm),
             ] else ...[
               // Windows/Linux: settings on left, controls on right
               const SizedBox(width: AppDimensions.spacingSm),
               _buildSettingsButton(context, theme),
+              const SizedBox(width: AppDimensions.spacingSm),
+              _buildEditControls(context, theme),
               const Spacer(),
               _buildWindowControls(context, theme),
             ],
@@ -129,62 +134,131 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
     );
   }
 
-  Widget _buildSettingsButton(BuildContext context, ThemeData theme) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.menu_rounded),
-      iconSize: 20,
-      tooltip: 'Menu',
-      color: theme.colorScheme.surface,
-      onSelected: (value) {
-        switch (value) {
-          case 'settings':
-            _openSettings(context);
-            break;
-          case 'edit_mode':
-            context.read<PaneProvider>().toggleEditMode();
-            break;
-        }
-      },
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: 'edit_mode',
-          child: Consumer<PaneProvider>(
-            builder: (context, paneProvider, child) {
-              return Row(
-                children: [
-                  Icon(
-                    paneProvider.editMode ? Icons.lock_open_rounded : Icons.edit_rounded,
-                    size: 20,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    paneProvider.editMode ? 'Exit Edit Mode' : 'Edit Mode',
-                    style: TextStyle(color: theme.colorScheme.onSurface),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-        PopupMenuItem(
-          value: 'settings',
+  Widget _buildEditControls(BuildContext context, ThemeData theme) {
+    return Consumer<PaneProvider>(
+      builder: (context, paneProvider, child) {
+        if (!paneProvider.editMode) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 2),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.settings_rounded,
-                size: 20,
-                color: theme.colorScheme.onSurface,
+              TextButton.icon(
+                onPressed: () => _showAddPaneDialog(context),
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: Text('Add a pane', style: theme.textTheme.bodySmall),
+                style: TextButton.styleFrom(
+                  foregroundColor: theme.colorScheme.onSurface,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                'Settings',
-                style: TextStyle(color: theme.colorScheme.onSurface),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: () => paneProvider.toggleRemoveMode(),
+                icon: Icon(
+                  paneProvider.removeMode ? Icons.close_rounded : Icons.remove_circle_outline_rounded,
+                  size: 16,
+                ),
+                label: Text(
+                  paneProvider.removeMode ? 'Done removing' : 'Remove a pane',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: paneProvider.removeMode ? theme.colorScheme.error : null,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: paneProvider.removeMode ? theme.colorScheme.error : theme.colorScheme.onSurface,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  backgroundColor: paneProvider.removeMode ? theme.colorScheme.errorContainer : null,
+                ),
               ),
             ],
           ),
-        ),
-      ],
+        );
+      },
+    );
+  }
+
+  OverlayEntry? _addPaneOverlayEntry;
+
+  void _showAddPaneDialog(BuildContext context) {
+    // Remove existing overlay if any
+    _addPaneOverlayEntry?.remove();
+    
+    final overlay = Overlay.of(context);
+    
+    _addPaneOverlayEntry = OverlayEntry(
+      builder: (context) => _AddPaneOverlay(
+        onClose: () {
+          _addPaneOverlayEntry?.remove();
+          _addPaneOverlayEntry = null;
+        },
+      ),
+    );
+    
+    overlay.insert(_addPaneOverlayEntry!);
+  }
+
+  Widget _buildSettingsButton(BuildContext context, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: PopupMenuButton<String>(
+        icon: const Icon(Icons.menu_rounded),
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+        iconSize: 20,
+        tooltip: 'Menu',
+        color: theme.colorScheme.surface,
+        onSelected: (value) {
+          switch (value) {
+            case 'settings':
+              _openSettings(context);
+              break;
+            case 'edit_mode':
+              context.read<PaneProvider>().toggleEditMode();
+              break;
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: 'edit_mode',
+            child: Consumer<PaneProvider>(
+              builder: (context, paneProvider, child) {
+                return Row(
+                  children: [
+                    Icon(
+                      paneProvider.editMode ? Icons.lock_open_rounded : Icons.edit_rounded,
+                      size: 20,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      paneProvider.editMode ? 'Exit Edit Mode' : 'Edit Mode',
+                      style: TextStyle(color: theme.colorScheme.onSurface),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          PopupMenuItem(
+            value: 'settings',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.settings_rounded,
+                  size: 20,
+                  color: theme.colorScheme.onSurface,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Settings',
+                  style: TextStyle(color: theme.colorScheme.onSurface),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -272,6 +346,120 @@ class _WindowButtonState extends State<_WindowButton> {
                   ? Colors.white
                   : theme.colorScheme.onSurface,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddPaneOverlay extends StatelessWidget {
+  final VoidCallback onClose;
+  
+  const _AddPaneOverlay({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Positioned(
+      top: AppDimensions.titlebarHeight + 8,
+      right: 8,
+      child: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        color: theme.colorScheme.surface,
+        child: Container(
+          width: 280,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Add pane', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Drag to desired location',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: onClose,
+                    iconSize: 20,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildDraggableItem(context, 'Library', PaneType.library, Icons.library_music_rounded),
+              _buildDraggableItem(context, 'Playing', PaneType.nowPlaying, Icons.album_rounded),
+              _buildDraggableItem(context, 'Queue', PaneType.queue, Icons.queue_music_rounded),
+              _buildDraggableItem(context, 'Selection', PaneType.selection, Icons.checklist_rounded),
+              _buildDraggableItem(context, 'Seekbar', PaneType.seekbar, Icons.linear_scale_rounded),
+              _buildDraggableItem(context, 'Controls', PaneType.controls, Icons.skip_next_rounded),
+              _buildDraggableItem(context, 'Album Cover', PaneType.albumCover, Icons.album_rounded),
+              _buildDraggableItem(context, 'Volume', PaneType.volume, Icons.volume_up_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDraggableItem(BuildContext context, String title, PaneType type, IconData icon) {
+    final theme = Theme.of(context);
+    
+    final feedback = Material(
+      elevation: 8,
+      borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+      color: theme.colorScheme.surface,
+      child: Container(
+        width: 200,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.2)),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: 12),
+            Text(title, style: theme.textTheme.bodyMedium),
+          ],
+        ),
+      ),
+    );
+
+    return Draggable<Map<String, dynamic>>(
+      data: {
+        'type': 'new_pane',
+        'paneType': type,
+        'title': title,
+      },
+      feedback: feedback,
+      onDragStarted: () => onClose(),
+      child: InkWell(
+        onTap: () {}, // Needed for hover effect
+        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 12),
+              Expanded(child: Text(title)),
+              Icon(Icons.drag_indicator_rounded, size: 20, color: theme.colorScheme.onSurfaceVariant),
+            ],
           ),
         ),
       ),

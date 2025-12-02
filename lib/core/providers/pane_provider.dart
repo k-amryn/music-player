@@ -5,20 +5,23 @@ import '../services/storage_service.dart';
 
 /// Provider for managing the pane layout
 class PaneProvider extends ChangeNotifier {
-  final StorageService _storageService;
+  final StorageService? _storageService;
   PaneLayout _layout;
   
   /// Whether we're on a mobile platform (iOS/Android)
   static bool get isMobile => Platform.isIOS || Platform.isAndroid;
 
-  PaneProvider(this._storageService)
-      : _layout = _initLayout(_storageService);
+  PaneProvider(this._storageService, [PaneLayout? initialLayout])
+      : _layout = initialLayout ?? _initLayout(_storageService);
 
   /// Initialize layout based on platform
-  static PaneLayout _initLayout(StorageService storageService) {
+  static PaneLayout _initLayout(StorageService? storageService) {
     if (isMobile) {
       // Mobile always uses mobile layout (single pane with tabs)
       return PaneLayout.mobileLayout();
+    }
+    if (storageService == null) {
+      return PaneLayout.defaultLayout();
     }
     final layout = storageService.loadLayout();
     return _sanitizeLayout(layout);
@@ -53,12 +56,59 @@ class PaneProvider extends ChangeNotifier {
 
   PaneLayout get layout => _layout;
   bool get editMode => _layout.editMode;
+  
+  bool _removeMode = false;
+  bool get removeMode => _removeMode;
 
   /// Toggle edit mode
   void toggleEditMode() {
     _layout = _layout.copyWith(editMode: !_layout.editMode);
+    if (!_layout.editMode) {
+      _removeMode = false;
+    }
     _save();
     notifyListeners();
+  }
+
+  /// Toggle remove mode
+  void toggleRemoveMode() {
+    _removeMode = !_removeMode;
+    notifyListeners();
+  }
+
+  /// Remove a pane by ID
+  void removePane(String paneId) {
+    final newRoot = _removePaneFromNode(_layout.root, paneId);
+    if (newRoot != null) {
+      _layout = _layout.copyWith(root: newRoot);
+    } else {
+      // If root is null, we removed the last pane. Reset to default.
+      _layout = PaneLayout(
+        root: _createDefaultPane(),
+        editMode: _layout.editMode,
+      );
+    }
+    _save();
+    notifyListeners();
+  }
+
+  PaneNode? _removePaneFromNode(PaneNode node, String paneId) {
+    if (node is PaneLeaf) {
+      if (node.pane.id == paneId) {
+        return null; // Remove this leaf
+      }
+      return node;
+    } else if (node is PaneSplit) {
+      final newFirst = _removePaneFromNode(node.first, paneId);
+      final newSecond = _removePaneFromNode(node.second, paneId);
+
+      if (newFirst == null && newSecond == null) return null;
+      if (newFirst == null) return newSecond;
+      if (newSecond == null) return newFirst;
+
+      return node.copyWith(first: newFirst, second: newSecond);
+    }
+    return node;
   }
 
   /// Set edit mode
@@ -360,6 +410,8 @@ class PaneProvider extends ChangeNotifier {
   }
 
   Future<void> _save() async {
-    await _storageService.saveLayout(_layout);
+    if (_storageService != null) {
+      await _storageService.saveLayout(_layout);
+    }
   }
 }

@@ -9,6 +9,10 @@ enum PaneType {
   library,
   queue,
   selection,
+  seekbar,
+  controls,
+  albumCover,
+  volume,
   custom,
 }
 

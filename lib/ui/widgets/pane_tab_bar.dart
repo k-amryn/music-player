@@ -161,7 +161,7 @@ class _PaneTabBarState extends State<PaneTabBar> {
   Widget _buildDragBar(ThemeData theme) {
     return Draggable<Map<String, dynamic>>(
       data: {
-        'type': 'pane',
+        'type': 'tab',
         'tabId': widget.tabs.first.id,
       },
       feedback: Material(
@@ -492,6 +492,14 @@ class _PaneTabBarState extends State<PaneTabBar> {
         return Icons.queue_music_rounded;
       case PaneType.selection:
         return Icons.checklist_rounded;
+      case PaneType.seekbar:
+        return Icons.linear_scale_rounded;
+      case PaneType.controls:
+        return Icons.skip_next_rounded;
+      case PaneType.albumCover:
+        return Icons.album_rounded;
+      case PaneType.volume:
+        return Icons.volume_up_rounded;
       case PaneType.custom:
         return Icons.extension_rounded;
     }

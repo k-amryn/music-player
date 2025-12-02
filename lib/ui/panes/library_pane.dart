@@ -872,13 +872,13 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
             if (!isSelected) {
               _toggleSelection(item.path);
             }
-            _showFolderContextMenu(context, item.path, details.globalPosition);
+            _showFolderContextMenu(context, item, details.globalPosition);
           },
           onLongPress: () {
             if (!isSelected) {
               _toggleSelection(item.path);
             }
-            _showFolderContextMenu(context, item.path, _lastPointerPosition);
+            _showFolderContextMenu(context, item, _lastPointerPosition);
           },
           borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
           hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.08),
@@ -1029,13 +1029,13 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
             if (!isSelected) {
               _toggleSelection(item.path);
             }
-            _showFolderContextMenu(context, item.path, details.globalPosition);
+            _showFolderContextMenu(context, item, details.globalPosition);
           },
           onLongPress: () {
             if (!isSelected) {
               _toggleSelection(item.path);
             }
-            _showFolderContextMenu(context, item.path, _lastPointerPosition);
+            _showFolderContextMenu(context, item, _lastPointerPosition);
           },
           hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
           child: Padding(
@@ -1220,13 +1220,13 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
             if (!isSelected) {
               _toggleSelection(item.path);
             }
-            _showFolderContextMenu(context, item.path, details.globalPosition);
+            _showFolderContextMenu(context, item, details.globalPosition);
           },
           onLongPress: () {
             if (!isSelected) {
               _toggleSelection(item.path);
             }
-            _showFolderContextMenu(context, item.path, _lastPointerPosition);
+            _showFolderContextMenu(context, item, _lastPointerPosition);
           },
           hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
           child: Padding(
@@ -1275,9 +1275,9 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
     ));
   }
 
-  void _showFolderContextMenu(BuildContext context, String path, Offset? position) {
+  void _showFolderContextMenu(BuildContext context, LibraryItem item, Offset? position) {
     final library = context.read<LibraryProvider>();
-    final isSelected = library.isSelected(path);
+    final isSelected = library.isSelected(item.path);
 
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final pos = position ?? overlay.localToGlobal(Offset.zero) + const Offset(100, 100);
@@ -1289,15 +1289,16 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
         Offset.zero & overlay.size,
       ),
       items: [
-        const PopupMenuItem<String>(
-          value: 'play',
-          child: ListTile(
-            leading: Icon(Icons.play_arrow_rounded),
-            title: Text('Play All'),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
+        if (item.isDirectory)
+          const PopupMenuItem<String>(
+            value: 'play',
+            child: ListTile(
+              leading: Icon(Icons.play_arrow_rounded),
+              title: Text('Play All'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
-        ),
         const PopupMenuItem<String>(
           value: 'playNext',
           child: ListTile(
@@ -1316,15 +1317,16 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
             contentPadding: EdgeInsets.zero,
           ),
         ),
-        const PopupMenuItem<String>(
-          value: 'default',
-          child: ListTile(
-            leading: Icon(Icons.star_rounded),
-            title: Text('Set as Default'),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
+        if (item.isDirectory)
+          const PopupMenuItem<String>(
+            value: 'default',
+            child: ListTile(
+              leading: Icon(Icons.star_rounded),
+              title: Text('Set as Default'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
-        ),
         if (!_isMobile)
           const PopupMenuItem<String>(
             value: 'showInFileBrowser',
@@ -1338,25 +1340,51 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
       ],
     ).then((value) async {
       if (value == 'play') {
-        _playAllInFolder(path);
+        _playAllInFolder(item.path);
       } else if (value == 'playNext') {
         final library = context.read<LibraryProvider>();
         final audio = context.read<AudioProvider>();
-        final tracks = await library.getAllTracksInDirectory(path);
-        if (tracks.isNotEmpty) {
-          audio.playNext(tracks);
+        
+        if (item.isDirectory) {
+          final tracks = await library.getAllTracksInDirectory(item.path);
+          if (tracks.isNotEmpty) {
+            audio.playNext(tracks);
+          }
+        } else {
+          final track = Track(
+            id: item.path,
+            path: item.path,
+            title: item.name.replaceAll(RegExp(r'\.[^.]+$'), ''),
+            artist: item.artist ?? 'Unknown Artist',
+            album: item.album ?? 'Unknown Album',
+            duration: item.durationMs != null ? Duration(milliseconds: item.durationMs!) : Duration.zero,
+          );
+          audio.playNext([track]);
         }
       } else if (value == 'addToQueue') {
         final library = context.read<LibraryProvider>();
         final audio = context.read<AudioProvider>();
-        final tracks = await library.getAllTracksInDirectory(path);
-        if (tracks.isNotEmpty) {
-          audio.addToQueue(tracks);
+        
+        if (item.isDirectory) {
+          final tracks = await library.getAllTracksInDirectory(item.path);
+          if (tracks.isNotEmpty) {
+            audio.addToQueue(tracks);
+          }
+        } else {
+          final track = Track(
+            id: item.path,
+            path: item.path,
+            title: item.name.replaceAll(RegExp(r'\.[^.]+$'), ''),
+            artist: item.artist ?? 'Unknown Artist',
+            album: item.album ?? 'Unknown Album',
+            duration: item.durationMs != null ? Duration(milliseconds: item.durationMs!) : Duration.zero,
+          );
+          audio.addToQueue([track]);
         }
       } else if (value == 'default') {
-        _setAsDefaultFolder(path);
+        _setAsDefaultFolder(item.path);
       } else if (value == 'showInFileBrowser') {
-        _showInFileBrowser(path);
+        _showInFileBrowser(item.path);
       }
     });
   }

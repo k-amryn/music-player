@@ -14,6 +14,10 @@ import '../panes/now_playing_pane.dart';
 import '../panes/library_pane.dart';
 import '../panes/queue_pane.dart';
 import '../panes/selection_pane.dart';
+import '../panes/seekbar_pane.dart';
+import '../panes/controls_pane.dart';
+import '../panes/album_cover_pane.dart';
+import '../panes/volume_pane.dart';
 
 /// Widget that displays a single pane with its tab bar and content
 class PaneWidget extends StatefulWidget {
@@ -64,6 +68,9 @@ class _PaneWidgetState extends State<PaneWidget> {
       onWillAcceptWithDetails: (details) {
         if (!widget.editMode) return false;
         final data = details.data;
+        
+        if (data['type'] == 'new_pane') return true;
+
         // Don't accept drops from the same pane if it's the only tab
         if (data['tabId'] != null &&
             widget.pane.tabs.any((t) => t.id == data['tabId']) &&
@@ -74,8 +81,12 @@ class _PaneWidgetState extends State<PaneWidget> {
       },
       onAcceptWithDetails: (details) {
         final data = details.data;
-        if (_dropPosition != null && data['tabId'] != null) {
-          _handleDrop(paneProvider, data['tabId'] as String);
+        if (_dropPosition != null) {
+          if (data['type'] == 'tab' && data['tabId'] != null) {
+            _handleDrop(paneProvider, data['tabId'] as String);
+          } else if (data['type'] == 'new_pane' && data['paneType'] != null) {
+            _handleNewPaneDrop(paneProvider, data['paneType'] as PaneType, data['title'] as String);
+          }
         }
         setState(() => _dropPosition = null);
       },
@@ -139,10 +150,43 @@ class _PaneWidgetState extends State<PaneWidget> {
             // Drop zone indicators (allow on mobile now)
             if (widget.editMode && candidateData.isNotEmpty)
               _buildDropIndicators(theme),
+
+            // Remove mode overlay
+            if (paneProvider.removeMode)
+              _buildRemoveOverlay(context, paneProvider, theme),
           ],
         );
       },
     ));
+  }
+
+  Widget _buildRemoveOverlay(BuildContext context, PaneProvider paneProvider, ThemeData theme) {
+    return Positioned.fill(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => paneProvider.removePane(widget.pane.id),
+          hoverColor: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+          child: Container(
+            color: theme.colorScheme.surface.withValues(alpha: 0.7),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.error,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildContent(BuildContext context) {
@@ -182,6 +226,14 @@ class _PaneWidgetState extends State<PaneWidget> {
         return QueuePane(key: ValueKey('queue_${tab.id}'));
       case PaneType.selection:
         return SelectionPane(key: ValueKey('selection_${tab.id}'));
+      case PaneType.seekbar:
+        return SeekbarPane(key: ValueKey('seekbar_${tab.id}'));
+      case PaneType.controls:
+        return ControlsPane(key: ValueKey('controls_${tab.id}'));
+      case PaneType.albumCover:
+        return AlbumCoverPane(key: ValueKey('album_cover_${tab.id}'));
+      case PaneType.volume:
+        return VolumePane(key: ValueKey('volume_${tab.id}'));
       case PaneType.custom:
         return BasePaneContent(
           key: ValueKey('custom_${tab.id}'),
@@ -196,15 +248,17 @@ class _PaneWidgetState extends State<PaneWidget> {
     final localOffset = box.globalToLocal(globalOffset);
     final size = box.size;
 
-    const edgeThreshold = 50.0;
+    // Use a larger threshold for easier targeting (25% of dimension, clamped between 60 and 120)
+    final horizontalThreshold = (size.width * 0.25).clamp(60.0, 120.0);
+    final verticalThreshold = (size.height * 0.25).clamp(60.0, 120.0);
 
-    if (localOffset.dx < edgeThreshold) {
+    if (localOffset.dx < horizontalThreshold) {
       return DropPosition.left;
-    } else if (localOffset.dx > size.width - edgeThreshold) {
+    } else if (localOffset.dx > size.width - horizontalThreshold) {
       return DropPosition.right;
-    } else if (localOffset.dy < edgeThreshold + AppDimensions.paneTabHeight) {
+    } else if (localOffset.dy < verticalThreshold) {
       return DropPosition.top;
-    } else if (localOffset.dy > size.height - edgeThreshold) {
+    } else if (localOffset.dy > size.height - verticalThreshold) {
       return DropPosition.bottom;
     }
     return DropPosition.center;
@@ -384,6 +438,50 @@ class _PaneWidgetState extends State<PaneWidget> {
     }
   }
 
+  void _handleNewPaneDrop(PaneProvider paneProvider, PaneType type, String title) {
+    final newTab = PaneTab.create(title: title, type: type);
+    
+    switch (_dropPosition) {
+      case DropPosition.left:
+        paneProvider.splitPane(
+          paneId: widget.pane.id,
+          direction: SplitDirection.horizontal,
+          newTab: newTab,
+          insertFirst: true,
+        );
+        break;
+      case DropPosition.right:
+        paneProvider.splitPane(
+          paneId: widget.pane.id,
+          direction: SplitDirection.horizontal,
+          newTab: newTab,
+          insertFirst: false,
+        );
+        break;
+      case DropPosition.top:
+        paneProvider.splitPane(
+          paneId: widget.pane.id,
+          direction: SplitDirection.vertical,
+          newTab: newTab,
+          insertFirst: true,
+        );
+        break;
+      case DropPosition.bottom:
+        paneProvider.splitPane(
+          paneId: widget.pane.id,
+          direction: SplitDirection.vertical,
+          newTab: newTab,
+          insertFirst: false,
+        );
+        break;
+      case DropPosition.center:
+        paneProvider.addTab(widget.pane.id, newTab);
+        break;
+      case null:
+        break;
+    }
+  }
+
   void _splitPaneWithTab(
     PaneProvider paneProvider,
     String tabId,
@@ -540,6 +638,50 @@ class _PaneWidgetState extends State<PaneWidget> {
                 paneProvider.addTab(
                   widget.pane.id,
                   PaneTab.create(title: 'Selection', type: PaneType.selection),
+                );
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.linear_scale_rounded),
+              title: const Text('Seekbar'),
+              onTap: () {
+                paneProvider.addTab(
+                  widget.pane.id,
+                  PaneTab.create(title: 'Seekbar', type: PaneType.seekbar),
+                );
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.skip_next_rounded),
+              title: const Text('Controls'),
+              onTap: () {
+                paneProvider.addTab(
+                  widget.pane.id,
+                  PaneTab.create(title: 'Controls', type: PaneType.controls),
+                );
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.album_rounded),
+              title: const Text('Album Cover'),
+              onTap: () {
+                paneProvider.addTab(
+                  widget.pane.id,
+                  PaneTab.create(title: 'Album Cover', type: PaneType.albumCover),
+                );
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.volume_up_rounded),
+              title: const Text('Volume'),
+              onTap: () {
+                paneProvider.addTab(
+                  widget.pane.id,
+                  PaneTab.create(title: 'Volume', type: PaneType.volume),
                 );
                 Navigator.pop(context);
               },
