@@ -192,10 +192,21 @@ class SettingsScreen extends StatelessWidget {
     BuildContext context,
     SettingsProvider settings,
   ) async {
-    final result = await FilePicker.platform.getDirectoryPath();
-    if (result != null) {
-      await settings.addLibraryFolder(result);
-    }
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Add Library Folder'),
+          content: _AddFolderDialogContent(settings: settings),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildLibraryScanSection(
@@ -648,6 +659,111 @@ class SettingsScreen extends StatelessWidget {
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Dialog content for adding a library folder
+class _AddFolderDialogContent extends StatefulWidget {
+  final SettingsProvider settings;
+  
+  const _AddFolderDialogContent({required this.settings});
+  
+  @override
+  State<_AddFolderDialogContent> createState() => _AddFolderDialogContentState();
+}
+
+class _AddFolderDialogContentState extends State<_AddFolderDialogContent> {
+  final TextEditingController _controller = TextEditingController();
+  
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.maxFinite,
+      height: 140,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _controller,
+            onChanged: (value) => setState(() {}),
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Folder path',
+              hintText: '/home/user/Music',
+              prefixIcon: Icon(Icons.folder_rounded),
+            ),
+            autofocus: true,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(40),
+                  ),
+                  onPressed: () async {
+                    try {
+                      final String? result = await FilePicker.platform.getDirectoryPath();
+                      if (result != null) {
+                        _controller.text = result;
+                        setState(() {});
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Folder picker unavailable.\n'
+                            'On Linux: sudo apt install zenity\n\n'
+                            'Enter path manually.',
+                          ),
+                          duration: Duration(seconds: 5),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.folder_open_rounded, size: 18),
+                  label: const Text('Browse'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(40),
+                  ),
+                  onPressed: _controller.text.trim().isEmpty
+                      ? null
+                      : () async {
+                          final String path = _controller.text.trim();
+                          final Directory dir = Directory(path);
+                          if (await dir.exists()) {
+                            await widget.settings.addLibraryFolder(path);
+                            Navigator.of(context).pop();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Folder does not exist. Please check the path.'),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        },
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Add'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
