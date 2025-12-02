@@ -8,6 +8,7 @@ import '../../core/providers/settings_provider.dart';
 import '../../core/providers/library_provider.dart';
 import '../../theme/app_theme.dart';
 import 'pane_tab_bar.dart';
+import 'custom_menu.dart';
 import '../panes/base_pane.dart';
 import '../panes/now_playing_pane.dart';
 import '../panes/library_pane.dart';
@@ -454,56 +455,14 @@ class _PaneWidgetState extends State<PaneWidget> {
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final pos = position ?? overlay.localToGlobal(Offset.zero) + const Offset(100, 100);
 
-    showMenu<void>(
+    showFadeMenu<void>(
       context: context,
       position: RelativeRect.fromRect(
         Rect.fromLTWH(pos.dx, pos.dy, 0, 0),
         Offset.zero & overlay.size,
       ),
       items: <PopupMenuEntry<void>>[
-        PopupMenuItem<void>(
-          child: const ListTile(
-            leading: Icon(Icons.settings_rounded),
-            title: Text('Pane Settings'),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-          onTap: () {
-            // Show pane-specific settings
-          },
-        ),
-        if (activeTab != null && activeTab.type == PaneType.library)
-          PopupMenuItem<void>(
-            child: const ListTile(
-              leading: Icon(Icons.refresh_rounded),
-              title: Text('Refresh Metadata'),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-            ),
-            onTap: () {
-              // Refresh metadata for the current view if possible, or root
-              // Since we don't know the current path here easily without state management,
-              // we might need a way to signal the LibraryPane.
-              // For now, let's refresh the root folders which is safe.
-              // Ideally, LibraryPane should listen to a stream or provider event.
-              // Or we can access LibraryProvider and refresh specific paths if we knew them.
-              // Let's just refresh the library provider's cache for now?
-              // Actually, LibraryProvider.refreshMetadata takes a path.
-              // We can't easily get the current path from here.
-              // But the user asked for it in the pane context menu.
-              // Maybe we can make LibraryPane listen to a global "Refresh" event for its pane ID?
-              // Or just refresh the root folders for now as a fallback.
-              // Let's try to find a better way.
-              // We can use a GlobalKey for LibraryPane? No, it's dynamic.
-              // Let's just refresh the root folders for now.
-              final settings = context.read<SettingsProvider>();
-              for (final folder in settings.libraryFolders) {
-                context.read<LibraryProvider>().refreshMetadata(folder);
-              }
-            },
-          ),
-        if (activeTab != null) ...<PopupMenuEntry<void>>[
-          const PopupMenuDivider(),
+        if (activeTab != null)
           PopupMenuItem<void>(
             child: const ListTile(
               leading: Icon(Icons.add_rounded),
@@ -513,7 +472,6 @@ class _PaneWidgetState extends State<PaneWidget> {
             ),
             onTap: () => _showAddTabDialog(context),
           ),
-        ],
         const PopupMenuDivider(),
         PopupMenuItem<void>(
           child: ListTile(

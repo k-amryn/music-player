@@ -18,6 +18,7 @@ class Track {
   final int? year;
   final int? bitrate;
   final String? codec;
+  final int? fileSize;
 
   const Track({
     required this.id,
@@ -35,6 +36,7 @@ class Track {
     this.year,
     this.bitrate,
     this.codec,
+    this.fileSize,
   });
 
   /// Creates a Track from a file path with basic metadata
@@ -65,6 +67,7 @@ class Track {
     int? year,
     int? bitrate,
     String? codec,
+    int? fileSize,
   }) {
     return Track(
       id: id ?? this.id,
@@ -82,6 +85,7 @@ class Track {
       year: year ?? this.year,
       bitrate: bitrate ?? this.bitrate,
       codec: codec ?? this.codec,
+      fileSize: fileSize ?? this.fileSize,
     );
   }
 
@@ -102,6 +106,7 @@ class Track {
       'year': year,
       'bitrate': bitrate,
       'codec': codec,
+      'fileSize': fileSize,
     };
   }
 
@@ -121,6 +126,7 @@ class Track {
       year: json['year'] as int?,
       bitrate: json['bitrate'] as int?,
       codec: json['codec'] as String?,
+      fileSize: json['fileSize'] as int?,
     );
   }
 

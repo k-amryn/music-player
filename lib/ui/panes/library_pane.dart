@@ -10,6 +10,7 @@ import '../../core/providers/library_provider.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../core/providers/pane_provider.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/custom_menu.dart';
 
 /// Library pane for browsing music files
 class LibraryPane extends StatefulWidget {
@@ -47,6 +48,8 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
   final Map<String?, List<LibraryItem>> _itemsCache = {};  // null key = root
 
   Offset? _lastPointerPosition;
+
+  bool get _isMobile => Platform.isIOS || Platform.isAndroid;
 
   @override
   bool get wantKeepAlive => true;  // Keep state when switching tabs
@@ -789,6 +792,68 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
     final isSelected = library.isSelected(item.path);
     final isSelectionMode = library.isSelectionMode;
 
+    // Build the draggable data
+    List<String> dragPaths;
+    if (isSelectionMode && isSelected) {
+      dragPaths = library.selectedPaths.toList();
+    } else {
+      dragPaths = [item.path];
+    }
+
+    final dragData = {
+      'type': 'library_items',
+      'paths': dragPaths,
+    };
+
+    if (_isMobile) {
+      return _buildGridFolderContent(context, item, theme, isSelected, isSelectionMode);
+    }
+
+    return Draggable<Map<String, dynamic>>(
+      data: dragData,
+      feedback: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.folder_rounded,
+                size: 20,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                dragPaths.length > 1 ? '${dragPaths.length} items' : item.name,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      childWhenDragging: Opacity(
+        opacity: 0.5,
+        child: _buildGridFolderContent(context, item, theme, isSelected, isSelectionMode),
+      ),
+      child: _buildGridFolderContent(context, item, theme, isSelected, isSelectionMode),
+    );
+  }
+
+  Widget _buildGridFolderContent(
+    BuildContext context,
+    LibraryItem item,
+    ThemeData theme,
+    bool isSelected,
+    bool isSelectionMode,
+  ) {
     return Material(
       color: isSelected
           ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
@@ -860,10 +925,11 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
             ],
           ),
         ),
-    ));
-    }
-  
-    Widget _buildListFolder(BuildContext context, dynamic itemOrPath, ThemeData theme) {
+      ),
+    );
+  }
+
+  Widget _buildListFolder(BuildContext context, dynamic itemOrPath, ThemeData theme) {
     final LibraryItem item;
     if (itemOrPath is LibraryItem) {
       item = itemOrPath;
@@ -883,6 +949,68 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
     final isSelected = library.isSelected(item.path);
     final isSelectionMode = library.isSelectionMode;
 
+    // Build the draggable data
+    List<String> dragPaths;
+    if (isSelectionMode && isSelected) {
+      dragPaths = library.selectedPaths.toList();
+    } else {
+      dragPaths = [item.path];
+    }
+
+    final dragData = {
+      'type': 'library_items',
+      'paths': dragPaths,
+    };
+
+    if (_isMobile) {
+      return _buildListFolderContent(context, item, theme, isSelected, isSelectionMode);
+    }
+
+    return Draggable<Map<String, dynamic>>(
+      data: dragData,
+      feedback: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.folder_rounded,
+                size: 20,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                dragPaths.length > 1 ? '${dragPaths.length} items' : item.name,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      childWhenDragging: Opacity(
+        opacity: 0.5,
+        child: _buildListFolderContent(context, item, theme, isSelected, isSelectionMode),
+      ),
+      child: _buildListFolderContent(context, item, theme, isSelected, isSelectionMode),
+    );
+  }
+
+  Widget _buildListFolderContent(
+    BuildContext context,
+    LibraryItem item,
+    ThemeData theme,
+    bool isSelected,
+    bool isSelectionMode,
+  ) {
     return Material(
       color: isSelected
           ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
@@ -1006,7 +1134,72 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
     final library = context.watch<LibraryProvider>();
     final isSelected = library.isSelected(item.path);
     final isSelectionMode = library.isSelectionMode;
-    
+
+    // Build the draggable data
+    List<String> dragPaths;
+    if (isSelectionMode && isSelected) {
+      dragPaths = library.selectedPaths.toList();
+    } else {
+      dragPaths = [item.path];
+    }
+
+    final dragData = {
+      'type': 'library_items',
+      'paths': dragPaths,
+    };
+
+    if (_isMobile) {
+      return _buildTrackItemContent(context, item, audio, theme, isPlaying, duration, isSelected, isSelectionMode);
+    }
+
+    return Draggable<Map<String, dynamic>>(
+      data: dragData,
+      feedback: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.music_note_rounded,
+                size: 20,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                dragPaths.length > 1 ? '${dragPaths.length} items' : item.name.replaceAll(RegExp(r'\.[^.]+$'), ''),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      childWhenDragging: Opacity(
+        opacity: 0.5,
+        child: _buildTrackItemContent(context, item, audio, theme, isPlaying, duration, isSelected, isSelectionMode),
+      ),
+      child: _buildTrackItemContent(context, item, audio, theme, isPlaying, duration, isSelected, isSelectionMode),
+    );
+  }
+
+  Widget _buildTrackItemContent(
+    BuildContext context,
+    LibraryItem item,
+    AudioProvider audio,
+    ThemeData theme,
+    bool isPlaying,
+    String duration,
+    bool isSelected,
+    bool isSelectionMode,
+  ) {
     return Material(
       color: isSelected
           ? theme.colorScheme.primaryContainer.withValues(alpha: 0.2)
@@ -1089,31 +1282,36 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final pos = position ?? overlay.localToGlobal(Offset.zero) + const Offset(100, 100);
     
-    showMenu<String>(
+    showFadeMenu<String>(
       context: context,
       position: RelativeRect.fromRect(
         Rect.fromLTWH(pos.dx, pos.dy, 0, 0),
         Offset.zero & overlay.size,
       ),
       items: [
-        PopupMenuItem<String>(
-          value: 'select',
-          child: ListTile(
-            leading: Icon(
-              isSelected
-                  ? Icons.check_box_rounded
-                  : Icons.check_box_outline_blank_rounded
-            ),
-            title: Text(isSelected ? 'Deselect' : 'Select'),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
         const PopupMenuItem<String>(
           value: 'play',
           child: ListTile(
             leading: Icon(Icons.play_arrow_rounded),
             title: Text('Play All'),
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'playNext',
+          child: ListTile(
+            leading: Icon(Icons.playlist_play_rounded),
+            title: Text('Play after current song'),
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'addToQueue',
+          child: ListTile(
+            leading: Icon(Icons.queue_music_rounded),
+            title: Text('Add to queue'),
             dense: true,
             contentPadding: EdgeInsets.zero,
           ),
@@ -1127,27 +1325,63 @@ class _LibraryPaneState extends State<LibraryPane> with AutomaticKeepAliveClient
             contentPadding: EdgeInsets.zero,
           ),
         ),
-        const PopupMenuItem<String>(
-          value: 'refresh',
-          child: ListTile(
-            leading: Icon(Icons.refresh_rounded),
-            title: Text('Refresh Metadata'),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
+        if (!_isMobile)
+          const PopupMenuItem<String>(
+            value: 'showInFileBrowser',
+            child: ListTile(
+              leading: Icon(Icons.folder_open_rounded),
+              title: Text('Show in file browser'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
-        ),
       ],
-    ).then((value) {
-      if (value == 'select') {
-        _toggleSelection(path);
-      } else if (value == 'play') {
+    ).then((value) async {
+      if (value == 'play') {
         _playAllInFolder(path);
+      } else if (value == 'playNext') {
+        final library = context.read<LibraryProvider>();
+        final audio = context.read<AudioProvider>();
+        final tracks = await library.getAllTracksInDirectory(path);
+        if (tracks.isNotEmpty) {
+          audio.playNext(tracks);
+        }
+      } else if (value == 'addToQueue') {
+        final library = context.read<LibraryProvider>();
+        final audio = context.read<AudioProvider>();
+        final tracks = await library.getAllTracksInDirectory(path);
+        if (tracks.isNotEmpty) {
+          audio.addToQueue(tracks);
+        }
       } else if (value == 'default') {
         _setAsDefaultFolder(path);
-      } else if (value == 'refresh') {
-        context.read<LibraryProvider>().refreshMetadata(path);
+      } else if (value == 'showInFileBrowser') {
+        _showInFileBrowser(path);
       }
     });
+  }
+
+  Future<void> _showInFileBrowser(String path) async {
+    try {
+      if (Platform.isWindows) {
+        final isDir = await FileSystemEntity.isDirectory(path);
+        if (isDir) {
+          await Process.run('explorer', [path]);
+        } else {
+          await Process.run('explorer', ['/select,', path]);
+        }
+      } else if (Platform.isMacOS) {
+        // open -R reveals in Finder
+        await Process.run('open', ['-R', path]);
+      } else if (Platform.isLinux) {
+        // xdg-open opens the file/folder. For files, we want the parent folder.
+        final isDir = await FileSystemEntity.isDirectory(path);
+        final target = isDir ? path : File(path).parent.path;
+        await Process.run('xdg-open', [target]);
+      }
+    } catch (e) {
+      debugPrint('Error showing in file browser: $e');
+    }
   }
 }
 

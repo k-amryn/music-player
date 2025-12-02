@@ -262,6 +262,7 @@ class LibraryProvider extends ChangeNotifier {
       year: entity.year,
       bitrate: entity.bitrate,
       codec: entity.codec,
+      fileSize: entity.fileSize,
     );
   }
 
@@ -298,6 +299,7 @@ class LibraryProvider extends ChangeNotifier {
         year: null,
         codec: null,
         avgBitrate: null,
+        totalSize: null,
         count: 0,
       );
     }
@@ -330,6 +332,7 @@ class LibraryProvider extends ChangeNotifier {
         year: null,
         codec: null,
         avgBitrate: null,
+        totalSize: null,
         count: 0,
       );
     }
@@ -408,6 +411,20 @@ class LibraryProvider extends ChangeNotifier {
       avgBitrate = (totalBitrate / bitrateCount).round();
     }
 
+    // Calculate total file size
+    int? totalSize;
+    int sizeSum = 0;
+    bool hasSize = false;
+    for (final track in tracks) {
+      if (track.fileSize != null && track.fileSize! > 0) {
+        sizeSum += track.fileSize!;
+        hasSize = true;
+      }
+    }
+    if (hasSize) {
+      totalSize = sizeSum;
+    }
+
     return SelectionMetadata(
       totalDuration: totalDuration,
       album: commonAlbum,
@@ -417,6 +434,7 @@ class LibraryProvider extends ChangeNotifier {
       year: yearDisplay,
       codec: commonCodec,
       avgBitrate: avgBitrate,
+      totalSize: totalSize,
       count: tracks.length,
     );
   }

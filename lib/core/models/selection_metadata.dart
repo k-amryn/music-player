@@ -10,6 +10,7 @@ class SelectionMetadata {
   final String? year;
   final String? codec;
   final int? avgBitrate;
+  final int? totalSize;
   final int count;
 
   const SelectionMetadata({
@@ -21,6 +22,7 @@ class SelectionMetadata {
     required this.year,
     required this.codec,
     required this.avgBitrate,
+    required this.totalSize,
     required this.count,
   });
 }

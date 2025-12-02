@@ -128,6 +128,18 @@ class AudioProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Insert tracks at a specific position in the queue
+  void insertTracksAt(List<Track> tracks, int index) {
+    final insertIndex = index.clamp(0, _queue.length);
+    _queue.insertAll(insertIndex, tracks);
+    
+    // Adjust current index if we inserted before it
+    if (insertIndex <= _currentIndex) {
+      _currentIndex += tracks.length;
+    }
+    notifyListeners();
+  }
+
   /// Insert tracks after the current track
   void playNext(List<Track> tracks) {
     final insertIndex = _currentIndex + 1;

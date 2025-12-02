@@ -66,6 +66,8 @@ class SelectionPane extends StatelessWidget {
               _buildRow(theme, 'Codec', metadata.codec!),
             if (metadata.avgBitrate != null)
               _buildRow(theme, 'Avg Bitrate', '${(metadata.avgBitrate! / 1000).round()} kbps'),
+            if (metadata.totalSize != null)
+              _buildRow(theme, 'Total Size', _formatFileSize(metadata.totalSize!)),
           ],
         ),
       ),
@@ -107,5 +109,17 @@ class SelectionPane extends StatelessWidget {
       return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     }
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) {
+      return '$bytes B';
+    } else if (bytes < 1024 * 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    } else if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    } else {
+      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    }
   }
 }

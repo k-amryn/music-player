@@ -268,7 +268,7 @@ class _PaneTabBarState extends State<PaneTabBar> {
               children: [
                 Padding(
                   padding: isMobile
-                      ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
+                      ? const EdgeInsets.symmetric(horizontal: 4, vertical: 6)
                       : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: isMobile
                       ? Center(
